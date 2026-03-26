@@ -8,7 +8,6 @@
   },
   "scripts": {
     "dev:dashboard": "pnpm --filter backend start:dev:dashboard",
-    "dev:backend": "pnpm --filter backend start:dev:backend",
     "dev:frontend": "pnpm --filter frontend dev",
     "lint:editor": "pnpm editorconfig-checker",
     "lint:format": "pnpm prettier \"**/*.{js,ts,jsx,tsx,json,md,css,html}\" --check",

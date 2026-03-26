@@ -22,13 +22,17 @@
 
 ## Documentation Index
 
-| File                                         | Topic                                                |
-| -------------------------------------------- | ---------------------------------------------------- |
-| [CLAUDE.md](./CLAUDE.md)                     | Overview, project structure, conventions (this file) |
-| [docs/database.md](./docs/database.md)       | Prisma setup, migrations, seeding, repository layer  |
-| [docs/conventions.md](./docs/conventions.md) | CQRS pattern, controllers, commands, queries         |
-| [docs/validation.md](./docs/validation.md)   | DTOs, class-validator, ValidationPipe                |
-| [docs/config.md](./docs/config.md)           | Typed config factory, environment variables          |
+| File                                             | Topic                                                |
+| ------------------------------------------------ | ---------------------------------------------------- |
+| [CLAUDE.md](./CLAUDE.md)                         | Overview, project structure, conventions (this file) |
+| [docs/database.md](./docs/database.md)           | Prisma setup, pgvector, migrations, adding models    |
+| [docs/auth.md](./docs/auth.md)                   | Auth0, JwtAuthGuard, @Public(), @CurrentUser()       |
+| [docs/bullmq.md](./docs/bullmq.md)               | BullMQ queues — producers, consumers, registration   |
+| [docs/rabbitmq.md](./docs/rabbitmq.md)           | RabbitMQ — exchanges, publishing, listeners          |
+| [docs/microservices.md](./docs/microservices.md) | Microservice rules, inter-service communication      |
+| [docs/validation.md](./docs/validation.md)       | DTOs, class-validator, ValidationPipe                |
+| [docs/config.md](./docs/config.md)               | Typed config factories, environment variables        |
+| [docs/conventions.md](./docs/conventions.md)     | Controllers, services, anti-patterns                 |
 
 ---
 
