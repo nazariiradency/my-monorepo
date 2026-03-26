@@ -395,6 +395,6 @@ Never modify generated files. Create a wrapper in `shared/components/` instead. 
 // ✅ register token → text-primary
 
 // ❌ CSS variable without @theme registration
-<div className="bg-[var(--color-primary)]">
+<div className="bg-(--color-primary)">
 // ✅ register --color-primary in @theme inline → bg-primary
 ```
