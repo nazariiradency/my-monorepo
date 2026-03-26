@@ -6,7 +6,7 @@ This React project follows a module-based architecture. Each feature module is s
 
 ## Technology Stack
 
-- **React** 18+ / **TypeScript** 5+
+- **React** 19+ / **TypeScript** 5+
 - **TanStack Router** — file-based routing, type-safe navigation
 - **TanStack Query** — server state, caching, background refetching
 - **Zustand** — client UI state, slice-based
