@@ -1,0 +1,28 @@
+packages/*/src:
+  .dir: kebab-case
+  .*: kebab-case
+  .*.*: kebab-case
+
+apps/backend/*/src:
+  .dir: kebab-case
+  .*: kebab-case
+  .*.*: kebab-case
+
+apps/frontend/src:
+  .dir: camelCase | PascalCase
+  .ts: camelCase | PascalCase
+  .tsx: PascalCase
+  .scss: camelCase | PascalCase
+  .module.scss: PascalCase | camelCase
+
+ignore:
+  - '**/.git'
+  - '**/.claude'
+  - '**/node_modules'
+  - '**/build'
+  - '**/dist'
+  - '**/docs'
+  - '**/generated'
+  - '**/prisma'
+  - '**/*.md'
+  - '**/*.gen.ts'
