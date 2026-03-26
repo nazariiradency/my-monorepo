@@ -29,3 +29,22 @@ export {
   DialogDescription,
 } from './dialog';
 export { Checkbox } from './checkbox';
+export { Avatar, AvatarImage, AvatarFallback } from './avatar';
+export {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from './tooltip';
+export {
+  Select,
+  SelectGroup,
+  SelectValue,
+  SelectTrigger,
+  SelectContent,
+  SelectLabel,
+  SelectItem,
+  SelectSeparator,
+  SelectScrollUpButton,
+  SelectScrollDownButton,
+} from './select';

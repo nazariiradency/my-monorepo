@@ -221,20 +221,73 @@ Keep mixins small and purposeful. Use them only when a pattern cannot be express
 
 ## shadcn/ui
 
-Components are generated into `shared/ui/`. **Never edit them directly** — re-generate via CLI when you need a new one.
+Components are generated into `src/shared/ui/`. **Never edit generated files directly** — re-generate via CLI when you need a new one.
+
+### Adding a new shadcn component — step by step
+
+**Step 1 — find the component name**
+
+Browse the shadcn catalog at [ui.shadcn.com/docs/components](https://ui.shadcn.com/docs/components). Note the slug used in the CLI command (e.g. `select`, `dropdown-menu`, `tooltip`).
+
+**Step 2 — run the CLI**
+
+From the `frontend/` directory:
 
 ```bash
-npx shadcn@latest add button
-npx shadcn@latest add input
-npx shadcn@latest add form
-npx shadcn@latest add dialog
-npx shadcn@latest add select
-npx shadcn@latest add dropdown-menu
-npx shadcn@latest add table
-npx shadcn@latest add badge
+cd frontend
+pnpm dlx shadcn@latest add <component-name>
 ```
 
-shadcn uses CSS variables internally (e.g. `--radius`, `--background`, `--foreground`). Keep `components.json` and `_variables.scss` in sync — if you change `--radius-md`, update `components.json` `radius` too.
+Examples:
+
+```bash
+pnpm dlx shadcn@latest add select
+pnpm dlx shadcn@latest add dropdown-menu
+pnpm dlx shadcn@latest add tooltip
+```
+
+The CLI will:
+
+- Write the component file to `src/shared/ui/<component-name>.tsx`
+- Install any required `@radix-ui/react-*` package into `frontend/package.json` automatically
+
+**Step 3 — re-export from the barrel**
+
+Open `src/shared/ui/index.ts` and add an export line for every named export the new file contains. Check the generated file to see what it exports.
+
+```ts
+// src/shared/ui/index.ts
+
+// example: after adding select
+export {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+  SelectGroup,
+  SelectLabel,
+  SelectSeparator,
+  SelectScrollUpButton,
+  SelectScrollDownButton,
+} from './select';
+```
+
+**Step 4 — use it**
+
+Import from the barrel, never from the file directly:
+
+```tsx
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/shared/ui';
+```
+
+---
 
 ### Extending shadcn components
 
@@ -254,6 +307,8 @@ export function DangerButton({ className, ...props }: ButtonProps) {
   );
 }
 ```
+
+Export the wrapper from `index.ts` the same way as any other component.
 
 ---
 
