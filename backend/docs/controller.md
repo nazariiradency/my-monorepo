@@ -4,37 +4,6 @@ Controller is responsible for **handling HTTP requests only**.
 
 It is the **entry point** that maps routes to Commands and Queries.
 
----
-
-# Core Idea
-
-Controller = HTTP adapter
-
-```text
-HTTP Request → Controller → CommandBus / QueryBus → Handler
-```
-
----
-
-# Responsibilities
-
-Controller MUST:
-
-- declare routes (`@Get`, `@Post`, `@Patch`, `@Delete`)
-- extract input from request (`@Body`, `@Param`, `@Query`)
-- dispatch Commands for writes via `CommandBus`
-- dispatch Queries for reads via `QueryBus`
-- return the result directly
-
-Controller MUST NOT:
-
-- contain business logic
-- call Repository directly
-- call services directly
-- transform or process data
-
----
-
 # Naming Convention
 
 ## Pattern
@@ -176,24 +145,6 @@ export class [Entity]Module {}
 
 ---
 
-# Architecture Role
-
-```text
-HTTP Request
-  ↓
-Controller  ← @Body / @Param / @Query
-  ↓
-CommandBus.execute() / QueryBus.execute()
-  ↓
-CommandHandler / QueryHandler
-  ↓
-Repository
-  ↓
-Database
-```
-
----
-
 # What Controller Does NOT Do
 
 ```ts
@@ -209,36 +160,3 @@ return { ...todo, fullTitle: `[${todo.id}] ${todo.title}` };
 // ❌ Never catch exceptions here (use global filters)
 try { ... } catch (e) { ... }
 ```
-
----
-
-# Key Principles
-
-## 1. Thin Adapter
-
-- receives input → dispatches → returns result
-- no conditions, no transformations
-
----
-
-## 2. Always Use Pipes on Params
-
-- `ParseUuidPipe` on every `:id` route param
-- validation fails fast before reaching the handler
-
----
-
-## 3. Correct Status Codes
-
-- `POST` returns `201` by default — keep it
-- `PATCH` and `DELETE` should always be `204 No Content`
-
----
-
-# Summary
-
-- Controller = HTTP adapter, one per entity
-- Reads go to `QueryBus`, writes go to `CommandBus`
-- Always use `ParseUuidPipe` for `:id` params
-- Always add `@HttpCode(HttpStatus.NO_CONTENT)` on `update` and `delete`
-- No logic, no direct repository calls, no response transformation

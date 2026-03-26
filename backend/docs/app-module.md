@@ -6,32 +6,6 @@ It is responsible for **wiring together all global concerns and feature modules*
 
 ---
 
-# Core Idea
-
-AppModule = application bootstrap point
-
-```text
-main.ts → AppModule → [GlobalModules, FeatureModules]
-```
-
----
-
-# Responsibilities
-
-AppModule MUST:
-
-- configure global modules (`ConfigModule`, `DatabaseModule`)
-- import all feature modules
-- stay flat and thin
-
-AppModule MUST NOT:
-
-- declare controllers
-- declare providers
-- contain any logic
-
----
-
 # Structure
 
 ```ts
@@ -162,32 +136,3 @@ AppModule
         ├── QueryHandlers
         └── RepositoriesModule
 ```
-
----
-
-# Key Principles
-
-## 1. No Providers, No Controllers
-
-AppModule is an orchestrator — it only imports, never declares.
-
----
-
-## 2. Global Modules at the Top
-
-`ConfigModule` and `DatabaseModule` always come first — feature modules depend on them.
-
----
-
-## 3. One Line Per Feature
-
-Each feature module is a single import. AppModule never knows about internals of a feature.
-
----
-
-# Summary
-
-- AppModule = root wiring module, no logic
-- Always: `ConfigModule` → `DatabaseModule` → feature modules
-- `isGlobal: true` on `ConfigModule` — never re-import it elsewhere
-- Adding a feature = one import line, nothing else

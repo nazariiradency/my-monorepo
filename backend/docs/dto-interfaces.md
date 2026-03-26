@@ -5,14 +5,6 @@ Interface describes **domain entity shape**.
 
 ---
 
-# Core Idea
-
-```text
-HTTP Request → DTO (validate & sanitize) → Command/Query → Interface (typed result)
-```
-
----
-
 # Two Separate Concerns
 
 |                | DTO                   | Interface                       |
@@ -31,22 +23,6 @@ HTTP Request → DTO (validate & sanitize) → Command/Query → Interface (type
 DTO (Data Transfer Object) = validated input from the outside world.
 
 It sits at the **boundary** between HTTP and application logic.
-
----
-
-## Responsibilities
-
-DTO MUST:
-
-- declare expected input fields
-- apply validation decorators (`class-validator`)
-- apply sanitization decorators (e.g. `@Trim()`)
-
-DTO MUST NOT:
-
-- contain business logic
-- reference domain interfaces
-- be used as a return type
 
 ---
 
@@ -134,21 +110,6 @@ title: string;
 Interface = the **shape of a domain entity** as returned from the database.
 
 It is the contract between Repository, Handlers, and Controllers.
-
----
-
-## Responsibilities
-
-Interface MUST:
-
-- reflect the exact fields the database returns
-- use precise types (`string`, `boolean`, `Date`)
-
-Interface MUST NOT:
-
-- have methods
-- have optional fields (unless truly nullable in DB)
-- contain validation logic
 
 ---
 
@@ -252,54 +213,3 @@ create(data: CreateTodoDto): Promise<Todo> {
   return this.prisma.todo.create({ data });
 }
 ```
-
----
-
-# Architecture Role
-
-```text
-HTTP Request
-  ↓
-DTO  ← validation & sanitization layer
-  ↓
-Command / Query
-  ↓
-Handler  → returns: Interface
-  ↓
-Repository  → returns: Interface
-  ↓
-Database
-```
-
----
-
-# Key Principles
-
-## 1. DTO = Boundary Guard
-
-- validates and sanitizes at the edge
-- never leaks into domain logic
-
----
-
-## 2. Interface = Source of Truth for Shape
-
-- every handler and repository return type references it
-- keeps types consistent across the feature
-
----
-
-## 3. Never Mix Them
-
-- DTO is not a return type
-- Interface has no validation decorators
-
----
-
-# Summary
-
-- DTO = input validation at the HTTP boundary, one per write operation
-- Interface = domain entity shape, used as return type everywhere
-- DTO fields are required in Create, optional in Update
-- Interface fields mirror the database model exactly
-- They are separate concerns and must never be merged

@@ -6,32 +6,6 @@ It defines models, field types, defaults, and table mappings.
 
 ---
 
-# Core Idea
-
-Schema = database contract
-
-```text
-schema.prisma → prisma generate → PrismaClient → Repository
-```
-
----
-
-# Responsibilities
-
-Schema MUST:
-
-- define all database models
-- declare field types and constraints
-- set default values
-- map models to table names via `@@map`
-
-Schema MUST NOT:
-
-- contain business logic
-- be modified without running a migration afterward
-
----
-
 # File Location
 
 ```text
@@ -219,52 +193,3 @@ this.prisma.todo.create(...)
 
 ✔ `prisma.[model]` matches the model name in schema (camelCase)  
 ✔ Never use `PrismaService` outside of Repository
-
----
-
-# Architecture Role
-
-```text
-schema.prisma
-  ↓ prisma generate
-PrismaClient (generated)
-  ↓
-PrismaService
-  ↓
-Repository
-  ↓
-CommandHandler / QueryHandler
-```
-
----
-
-# Key Principles
-
-## 1. Schema = Single Source of Truth
-
-- all DB structure lives here
-- no raw SQL migrations by hand
-
----
-
-## 2. Standard Fields on Every Model
-
-- `id`, `createdAt`, `updatedAt` — always present
-
----
-
-## 3. Always `@@map`
-
-- model name and table name are always decoupled
-- DB stays in snake_case, code stays in PascalCase
-
----
-
-# Summary
-
-- Schema defines all models, fields, defaults, and table names
-- Every model has `id`, `createdAt`, `updatedAt`
-- Always use `@@map` with snake_case plural table names
-- Never hardcode `DATABASE_URL` — always use `env()`
-- Generated client is never edited manually
-- `PrismaService` is the only place that uses `PrismaClient`

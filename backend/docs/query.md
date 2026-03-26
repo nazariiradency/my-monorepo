@@ -6,48 +6,6 @@ It is the **single entry point for read operations** inside a feature module.
 
 ---
 
-# Core Idea
-
-Query = intent to read something
-
-```text
-Controller → QueryBus → QueryHandler → Repository
-```
-
----
-
-# Responsibilities
-
-Query MUST:
-
-- carry parameters needed to perform a read
-- be a plain class with no logic
-- be immutable (readonly properties)
-
-QueryHandler MUST:
-
-- fetch data via Repository
-- throw `NotFoundException` if a single entity is not found
-- return a typed result
-
----
-
-# What Query / QueryHandler MUST NOT Do
-
-Query is NOT allowed to:
-
-- contain logic
-- mutate any state
-
-QueryHandler is NOT allowed to:
-
-- write to the database
-- call CommandBus
-- emit events
-- call other QueryHandlers
-
----
-
 # Naming Convention
 
 ## Pattern
@@ -200,22 +158,6 @@ async findOne(@Param('id') id: string) {
 
 ---
 
-# Architecture Role
-
-```text
-Controller
-  ↓
-QueryBus.execute(new XxxQuery(...))
-  ↓
-QueryHandler
-  ↓
-Repository
-  ↓
-Database
-```
-
----
-
 # Return Types
 
 | Operation        | Return Type                        |
@@ -235,38 +177,3 @@ Database
 | Returns data    | ✅                | optional           |
 | Throws NotFound | ✅ (single fetch) | ✅ (before mutate) |
 | Bus             | `QueryBus`        | `CommandBus`       |
-
----
-
-# Key Principles
-
-## 1. Query = Data Bag
-
-- no methods
-- no logic
-- only `readonly` constructor properties
-
----
-
-## 2. Handler = Thin Reader
-
-- fetch → check existence → return
-- no writes, no side effects
-- no direct DB calls (use Repository)
-
----
-
-## 3. One Query = One Read Intent
-
-- `GetTodoById` ≠ `GetTodoByIdWithRelations`
-- keep queries granular and explicit
-
----
-
-# Summary
-
-- Query = immutable object describing a read intent
-- Handler = thin executor that delegates to Repository
-- Always throw `NotFoundException` when a single entity is not found
-- One Query + Handler per read operation
-- Register all handlers via `QueryHandlers` array in `index.ts`

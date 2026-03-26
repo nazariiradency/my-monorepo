@@ -6,38 +6,6 @@ It is the **single source of truth for persistence** inside a service.
 
 ---
 
-# Core Idea
-
-Repository = abstraction over database
-
-```text
-CommandHandler → Repository → Database
-```
-
----
-
-# Responsibilities
-
-Repository MUST:
-
-- read data from DB
-- write data to DB
-- handle pagination
-- return domain entities
-
----
-
-# What Repository MUST NOT Do
-
-Repository is NOT allowed to:
-
-- contain business logic
-- call other services
-- emit events (RabbitMQ)
-- use CommandBus / QueryBus
-
----
-
 # Naming Convention
 
 ## Pattern
@@ -180,68 +148,4 @@ await this.prisma.$transaction([
   exports: [[Name]Repository],
 })
 export class RepositoriesModule {}
-```
-
----
-
-# Architecture Role
-
-```text
-Controller
-  ↓
-CommandHandler / QueryHandler
-  ↓
-Repository
-  ↓
-Database
-```
-
----
-
-# Key Principles
-
-## 1. Thin Layer
-
-- no decisions
-- no conditions
-- just data access
-
----
-
-## 2. One Responsibility
-
-Repository = only persistence
-
----
-
-## 3. No Side Effects
-
-- no events
-- no emails
-- no jobs
-
----
-
-# Summary
-
-- Repository = DB access only
-- One per entity
-- No business logic
-- No events
-- No external calls
-
----
-
-# Final Flow
-
-```text
-Controller
-  ↓
-CommandHandler
-  ↓
-Repository
-  ↓
-Database
-  ↓
-emit(event)
 ```

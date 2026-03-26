@@ -4,18 +4,6 @@ Use RabbitMQ when an action in one app must trigger work in another.
 
 ---
 
-# Core Idea
-
-RabbitMQ is used to **emit events after a successful business action**.
-
-```text
-Controller → Command → CommandHandler → Repository
-                                      ↓
-                                  emit(event)
-```
-
----
-
 # Naming Convention
 
 ## Pattern
@@ -155,32 +143,6 @@ export class [Name]Listener {
 
 ---
 
-# Data Flow
-
-```text
-HTTP Request
-  ↓
-Controller
-  ↓
-CommandBus
-  ↓
-CommandHandler
-  ↓
-Database write
-  ↓
-emit(EVENT)
-  ↓
-RabbitMQ Queue
-  ↓
-Microservice (@EventPattern)
-  ↓
-CommandBus
-  ↓
-Business Logic
-```
-
----
-
 # Injecting RabbitMQ Client
 
 ```ts
@@ -208,27 +170,4 @@ export const EVENTS = {
   [NAME]_CREATED: '[name].created',
   [NAME]_DELETED: '[name].deleted',
 } as const;
-```
-
----
-
-# Summary
-
-- Controller → no RabbitMQ
-- CommandHandler → emit events
-- Event = fact after change
-- Listener → reacts via CommandBus
-
----
-
-# Final Flow
-
-```text
-create [name]
-  ↓
-save to DB
-  ↓
-emit([name].created)
-  ↓
-other services react
 ```
