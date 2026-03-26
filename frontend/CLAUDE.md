@@ -80,6 +80,8 @@ src/
 │   ├── index.ts                    # Barrel — re-exports all shared utilities
 │   ├── ui/                         # shadcn-generated components (never edit directly)
 │   │   └── index.ts                # Barrel — re-exports all UI components
+│   ├── components/                 # Common cross-module components
+│   │   └── index.ts                # Barrel — re-exports all shared components
 │   ├── hooks/                      # cross-module hooks (useDebounce, useMediaQuery etc.)
 │   │   └── index.ts
 │   ├── lib/
@@ -161,6 +163,7 @@ src/
 | Styling (scoped)         | `[Name].module.scss`         | Complex selectors, animations per component |
 | Styling (globals/tokens) | `styles/*.scss`              | CSS variables, keyframes, mixins            |
 | UI primitives            | `shared/ui/` (shadcn)        | Never edit generated files                  |
+| Shared components        | `shared/components/`         | Common components reused across modules     |
 
 ---
 
