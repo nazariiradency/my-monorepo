@@ -1,60 +1,70 @@
-# Forms — React Hook Form + Zod + shadcn
+# Forms — React Hook Form + Zod + shadcn/ui
 
-## How They Connect
+## How the Three Parts Connect
 
 ```
-schema.ts          → defines Zod schema + inferred type
-hooks/useCreate*.ts → useForm({ resolver: zodResolver(schema) }) + useMutation
-components/*Form.tsx → <Form {...form}> from shadcn wires RHF context to UI
+schema.ts              → Zod schema defines shape + validation rules + inferred type
+hooks/useCreate*.ts    → useForm({ resolver: zodResolver(schema) }) + useMutation
+components/*Form.tsx   → receives { form, onSubmit, isPending } — renders only
 ```
+
+The component never touches validation or mutation logic. The hook owns the full lifecycle.
 
 ---
 
-## Defining the Schema
+## Creating a Form — Step by Step
 
-Schemas live in `modules/[name]/schema.ts`. Types are always inferred from Zod — never written manually.
+### Step 1 — Define the schema in schema.ts
+
+Mutation payload schemas live in `modules/[name]/schema.ts`. Always infer the TypeScript type from Zod — never write a separate interface.
 
 ```ts
 // modules/products/schema.ts
+import { z } from 'zod/v3';
+
 export const createProductSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   price: z.number().positive('Price must be positive'),
   category: z.enum(['electronics', 'clothing', 'general'], {
     required_error: 'Please select a category',
   }),
-  description: z.string().optional(),
+  description: z.string().max(500).optional(),
 });
 
+// ✅ type is always inferred — never written by hand
 export type CreateProductPayload = z.infer<typeof createProductSchema>;
 ```
 
 ---
 
-## Hook — Form + Mutation Together
+### Step 2 — Create the hook
 
-The hook is the integration layer. The component just calls it.
+The hook owns `useForm`, `useMutation`, and the success/error lifecycle. The component receives a clean interface: `{ form, onSubmit, isPending }`.
 
 ```ts
-// hooks/useCreateProduct.ts
+// modules/products/hooks/useCreateProduct.ts
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { createProduct, productKeys } from '../api';
+import { createProductSchema, type CreateProductPayload } from '../schema';
+import { useProductsStore } from '../store';
+
 export function useCreateProduct() {
   const qc = useQueryClient();
   const closeDialog = useProductsStore((s) => s.closeDialog);
 
   const form = useForm<CreateProductPayload>({
     resolver: zodResolver(createProductSchema),
-    defaultValues: { name: '', price: 0, category: 'general' },
+    defaultValues: { name: '', price: 0, category: 'general', description: '' },
   });
 
   const mutation = useMutation({
     mutationFn: createProduct,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: productsKeys.lists() });
+      void qc.invalidateQueries({ queryKey: productKeys.lists() });
       form.reset();
       closeDialog();
-    },
-    onError: (error) => {
-      // map server errors back to fields if needed
-      form.setError('email', { message: error.message });
     },
   });
 
@@ -67,14 +77,26 @@ export function useCreateProduct() {
 }
 ```
 
+**What each part does:**
+
+| Part                               | Purpose                                                    |
+| ---------------------------------- | ---------------------------------------------------------- |
+| `zodResolver(createProductSchema)` | Runs Zod validation on submit — blocks mutation if invalid |
+| `defaultValues`                    | Pre-fills the form; must match every field in the schema   |
+| `form.handleSubmit(...)`           | Calls the callback only when validation passes             |
+| `invalidateQueries`                | Tells TanStack Query to re-fetch the list after the write  |
+| `form.reset()`                     | Clears fields after success                                |
+| `closeDialog()`                    | Dismisses the dialog via Zustand                           |
+
 ---
 
-## Form Component — shadcn Form
+### Step 3 — Create the form component
 
-Use shadcn's `Form` wrapper — it connects RHF's `formState` to `FormMessage` automatically.
+The form component receives `form`, `onSubmit`, `isPending`, and `submitLabel` as props. It uses shadcn's `Form` wrapper, which connects RHF's `formState` to `FormMessage` automatically.
 
 ```tsx
-// modules/products/components/ProductForm.tsx
+// modules/products/components/ProductForm/ProductForm.tsx
+import type { UseFormReturn } from 'react-hook-form';
 import {
   Form,
   FormControl,
@@ -82,18 +104,17 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/shared/ui/form';
-import { Input } from '@/shared/ui/input';
-import { Button } from '@/shared/ui/button';
+  Input,
+  Button,
+} from '@/shared/ui';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/shared/ui/select';
-import type { UseFormReturn } from 'react-hook-form';
-import type { CreateProductPayload } from '../schema';
+} from '@/shared/ui';
+import type { CreateProductPayload } from '../../schema';
 
 interface ProductFormProps {
   form: UseFormReturn<CreateProductPayload>;
@@ -111,6 +132,7 @@ export function ProductForm({
   return (
     <Form {...form}>
       <form onSubmit={onSubmit} className="space-y-4">
+        {/* Text input field */}
         <FormField
           control={form.control}
           name="name"
@@ -120,11 +142,12 @@ export function ProductForm({
               <FormControl>
                 <Input placeholder="Product name" {...field} />
               </FormControl>
-              <FormMessage />
+              <FormMessage /> {/* renders validation error automatically */}
             </FormItem>
           )}
         />
 
+        {/* Select field */}
         <FormField
           control={form.control}
           name="category"
@@ -157,41 +180,38 @@ export function ProductForm({
 }
 ```
 
+Add the barrel:
+
+```ts
+// modules/products/components/ProductForm/index.ts
+export { ProductForm } from './ProductForm';
+```
+
 ---
 
-## Reusing the Form in Create vs Edit
+### Step 4 — Use the form in a dialog
 
-The form component is shared. The hook provides pre-filled defaults for edit:
+The dialog calls the hook, receives `{ form, onSubmit, isPending }`, and passes them straight into the form component. The dialog has no validation or mutation logic of its own.
 
 ```tsx
-// CreateProductDialog uses useCreateProduct
+// modules/products/components/ProductDialogs/ProductDialogs.tsx
 export function CreateProductDialog() {
+  const closeDialog = useProductsStore((s) => s.closeDialog);
   const { form, onSubmit, isPending } = useCreateProduct();
-  return (
-    <Dialog>
-      <ProductForm
-        form={form}
-        onSubmit={onSubmit}
-        isPending={isPending}
-        submitLabel="Create"
-      />
-    </Dialog>
-  );
-}
 
-// EditProductDialog uses useUpdateProduct (pre-filled)
-export function EditProductDialog() {
-  const product = useProductsStore((s) => s.selectedProduct);
-  if (!product) return null;
-  const { form, onSubmit, isPending } = useUpdateProduct(product);
   return (
-    <Dialog>
-      <ProductForm
-        form={form}
-        onSubmit={onSubmit}
-        isPending={isPending}
-        submitLabel="Save changes"
-      />
+    <Dialog open onOpenChange={closeDialog}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>New Product</DialogTitle>
+        </DialogHeader>
+        <ProductForm
+          form={form}
+          onSubmit={onSubmit}
+          isPending={isPending}
+          submitLabel="Create"
+        />
+      </DialogContent>
     </Dialog>
   );
 }
@@ -199,17 +219,200 @@ export function EditProductDialog() {
 
 ---
 
-## shadcn/ui Components
+## Reusing the Form Component in Create vs Edit
 
-Generated into `shared/ui/`. Never edit them directly — re-generate via CLI.
+The form component is shared between create and edit. The hook provides pre-filled `defaultValues` for edit.
+
+```tsx
+// CreateProductDialog — uses useCreateProduct (empty defaults)
+export function CreateProductDialog() {
+  const closeDialog = useProductsStore((s) => s.closeDialog);
+  const { form, onSubmit, isPending } = useCreateProduct();
+
+  return (
+    <Dialog open onOpenChange={closeDialog}>
+      <DialogContent>
+        <ProductForm
+          form={form}
+          onSubmit={onSubmit}
+          isPending={isPending}
+          submitLabel="Create"
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// EditProductDialog — uses useUpdateProduct (pre-filled with existing values)
+export function EditProductDialog({ product }: { product: Product }) {
+  const closeDialog = useProductsStore((s) => s.closeDialog);
+  const { form, onSubmit, isPending } = useUpdateProduct(product);
+
+  return (
+    <Dialog open onOpenChange={closeDialog}>
+      <DialogContent>
+        <ProductForm
+          form={form}
+          onSubmit={onSubmit}
+          isPending={isPending}
+          submitLabel="Save changes"
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+```
+
+The `useUpdateProduct` hook seeds `defaultValues` from the passed-in item:
+
+```ts
+const form = useForm<UpdateProductPayload>({
+  resolver: zodResolver(updateProductSchema),
+  defaultValues: {
+    name: product.name,
+    price: product.price,
+    category: product.category,
+  },
+});
+```
+
+---
+
+## Field Types — Patterns per Input Kind
+
+### Text / number input
+
+```tsx
+<FormField
+  control={form.control}
+  name="name"
+  render={({ field }) => (
+    <FormItem>
+      <FormLabel>Name</FormLabel>
+      <FormControl>
+        <Input {...field} />
+      </FormControl>
+      <FormMessage />
+    </FormItem>
+  )}
+/>
+```
+
+### Textarea
+
+```tsx
+<FormField
+  control={form.control}
+  name="description"
+  render={({ field }) => (
+    <FormItem>
+      <FormLabel>Description</FormLabel>
+      <FormControl>
+        <Textarea rows={4} {...field} />
+      </FormControl>
+      <FormMessage />
+    </FormItem>
+  )}
+/>
+```
+
+### Select
+
+```tsx
+<FormField
+  control={form.control}
+  name="category"
+  render={({ field }) => (
+    <FormItem>
+      <FormLabel>Category</FormLabel>
+      <Select onValueChange={field.onChange} defaultValue={field.value}>
+        <FormControl>
+          <SelectTrigger>
+            <SelectValue placeholder="Pick one" />
+          </SelectTrigger>
+        </FormControl>
+        <SelectContent>
+          <SelectItem value="a">Option A</SelectItem>
+          <SelectItem value="b">Option B</SelectItem>
+        </SelectContent>
+      </Select>
+      <FormMessage />
+    </FormItem>
+  )}
+/>
+```
+
+### Checkbox
+
+```tsx
+<FormField
+  control={form.control}
+  name="completed"
+  render={({ field }) => (
+    <FormItem className="flex items-center gap-2">
+      <FormControl>
+        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+      </FormControl>
+      <FormLabel>Mark as completed</FormLabel>
+      <FormMessage />
+    </FormItem>
+  )}
+/>
+```
+
+---
+
+## Server-Side Errors
+
+Map server errors back to specific fields in `onError`:
+
+```ts
+const mutation = useMutation({
+  mutationFn: createProduct,
+  onSuccess: () => {
+    /* ... */
+  },
+  onError: (error) => {
+    // map a server field error back to the RHF field
+    if (error.field === 'name') {
+      form.setError('name', { message: error.message });
+    }
+  },
+});
+```
+
+---
+
+## Required shadcn Components
+
+Install these before building forms:
 
 ```bash
-npx shadcn@latest add form
-npx shadcn@latest add input
-npx shadcn@latest add button
-npx shadcn@latest add select
-npx shadcn@latest add dialog
-npx shadcn@latest add textarea
+cd frontend
+pnpm dlx shadcn@latest add form
+pnpm dlx shadcn@latest add input
+pnpm dlx shadcn@latest add button
+pnpm dlx shadcn@latest add select
+pnpm dlx shadcn@latest add textarea
+pnpm dlx shadcn@latest add checkbox
+pnpm dlx shadcn@latest add dialog
+```
+
+Import from the barrel, never from the generated file directly:
+
+```ts
+// ✅
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+} from '@/shared/ui';
+
+// ❌
+import { Form } from '@/shared/ui/form';
 ```
 
 ---
@@ -218,18 +421,27 @@ npx shadcn@latest add textarea
 
 ```ts
 // ❌ TypeScript interface separate from Zod schema
-interface CreateProductPayload { name: string; price: number }
-const schema = z.object({ name: z.string(), price: z.number() })
+interface CreateProductPayload { name: string }
+const schema = z.object({ name: z.string() })
 // ✅ export type CreateProductPayload = z.infer<typeof createProductSchema>
 
-// ❌ useForm + useMutation directly in component
+// ❌ useForm + useMutation directly in the component
 function CreateProductForm() {
-  const form     = useForm()
-  const mutation = useMutation({ mutationFn: createProduct })
+  const form = useForm();
+  const mutation = useMutation({ mutationFn: createProduct });
 }
-// ✅ extract to useCreateProduct() hook
+// ✅ extract to useCreateProduct() hook — component only receives { form, onSubmit, isPending }
 
 // ❌ manual error display
-{errors.name && <p>{errors.name.message}</p>}
-// ✅ use shadcn <FormMessage /> — it reads from RHF formState automatically
+{errors.name && <p className="text-red-500">{errors.name.message}</p>}
+// ✅ <FormMessage /> — reads from RHF formState automatically
+
+// ❌ missing defaultValues
+const form = useForm<CreateProductPayload>({ resolver: zodResolver(schema) });
+// ✅ provide defaultValues for every field — avoids uncontrolled→controlled warnings
+
+// ❌ calling mutation directly from JSX
+<button onClick={() => mutation.mutate(form.getValues())}>Submit</button>
+// ✅ use form.handleSubmit — it runs Zod validation first
+<form onSubmit={form.handleSubmit((data) => mutation.mutate(data))}>
 ```

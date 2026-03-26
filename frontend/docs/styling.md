@@ -17,22 +17,46 @@ Each tool has a distinct role. Never use them interchangeably.
 ```
 src/
 ├── styles/
-│   ├── globals.scss          # Entry point — imports all partials
+│   ├── tailwind.css          # Tailwind v4 entry — @import 'tailwindcss' + @theme blocks
+│   ├── globals.scss          # SCSS entry — imports all partials
 │   ├── _variables.scss       # CSS custom properties (design tokens)
 │   ├── _typography.scss      # Font-face, base type scale
 │   ├── _animations.scss      # @keyframes definitions
-│   ├── _reset.scss           # Base resets (on top of Tailwind preflight)
+│   ├── _reset.scss           # Base resets
 │   └── _mixins.scss          # SCSS mixins and functions
 │
 ├── shared/
 │   └── ui/                   # shadcn-generated components (never edit)
 │
-└── main.tsx                  # imports styles/globals.scss
+└── main.tsx                  # imports tailwind.css and globals.scss
+```
+
+Both style entry points are imported once in `main.tsx`:
+
+```ts
+// main.tsx
+import '@/styles/tailwind.css';
+import '@/styles/globals.scss';
+```
+
+Tailwind is loaded as a Vite plugin — no PostCSS config needed:
+
+```ts
+// vite.config.ts
+import tailwindcss from '@tailwindcss/vite';
+
+export default defineConfig({
+  plugins: [tailwindcss(), react(), TanStackRouterVite(...)],
+});
 ```
 
 ---
 
-## globals.scss — entry point
+## SCSS Global Files
+
+### globals.scss — entry point
+
+Imports all SCSS partials in order. Add new partials here when you create one.
 
 ```scss
 // styles/globals.scss
@@ -40,101 +64,127 @@ src/
 @use 'reset';
 @use 'typography';
 @use 'animations';
-
-// Tailwind directives
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@use 'mixins';
 ```
+
+### tailwind.css — Tailwind v4 entry
+
+Tailwind v4 uses a CSS-first configuration. The `@theme` block is where you register custom design tokens as Tailwind utilities. There is no `tailwind.config.ts`.
+
+```css
+/* styles/tailwind.css */
+@import 'tailwindcss';
+
+@theme inline {
+  /* Wire CSS variables from _variables.scss as Tailwind utilities */
+  --color-primary: var(--color-primary);
+  --color-primary-hover: var(--color-primary-hover);
+  --color-danger: var(--color-danger);
+  --color-surface: var(--color-surface);
+  --color-surface-subtle: var(--color-surface-subtle);
+  --color-border: var(--color-border);
+  --color-text: var(--color-text);
+  --color-text-muted: var(--color-text-muted);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+
+  --shadow-card: var(--shadow-card);
+}
+```
+
+The `inline` keyword tells Tailwind to use the CSS variable reference at runtime (enabling dark mode token swaps) rather than inlining the raw value at build time.
 
 ---
 
-## \_variables.scss — design tokens as CSS custom properties
+## Adding a Design Token — Step by Step
 
-Define all design tokens here. Tailwind config reads them so both systems stay in sync.
+A design token is a named CSS variable that represents a raw value (color, spacing, radius). Define it once; use it everywhere.
+
+### Step 1 — Add the variable to `_variables.scss`
 
 ```scss
 // styles/_variables.scss
 :root {
-  // colors
-  --color-primary: #4f46e5; // indigo-600
-  --color-primary-hover: #4338ca; // indigo-700
-  --color-danger: #dc2626; // red-600
-  --color-surface: #ffffff;
-  --color-surface-subtle: #f4f4f5; // zinc-100
-  --color-border: #e4e4e7; // zinc-200
-  --color-text: #18181b; // zinc-900
-  --color-text-muted: #71717a; // zinc-500
+  /* existing tokens... */
 
-  // spacing
-  --spacing-page-x: 1.5rem; // horizontal page padding
-  --spacing-section: 2.5rem; // between page sections
-
-  // radius
-  --radius-sm: 0.375rem; // 6px
-  --radius-md: 0.5rem; // 8px  — matches shadcn default
-  --radius-lg: 0.75rem; // 12px
-  --radius-xl: 1rem; // 16px
-
-  // shadows
-  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  // ✅ add your new token here
+  --color-warning: #d97706; // amber-600
+  --color-warning-subtle: #fef3c7; // amber-100
 }
 
 [data-theme='dark'] {
-  --color-surface: #18181b;
-  --color-surface-subtle: #27272a;
-  --color-border: #3f3f46;
-  --color-text: #fafafa;
-  --color-text-muted: #a1a1aa;
+  // override for dark mode if needed
+  --color-warning: #fbbf24; // amber-400
 }
 ```
 
-Wire tokens into Tailwind so you can use them as utilities:
+**Naming conventions:**
 
-```ts
-// tailwind.config.ts
-export default {
-  theme: {
-    extend: {
-      colors: {
-        primary: 'var(--color-primary)',
-        danger: 'var(--color-danger)',
-        surface: 'var(--color-surface)',
-        border: 'var(--color-border)',
-      },
-      borderRadius: {
-        sm: 'var(--radius-sm)',
-        md: 'var(--radius-md)',
-        lg: 'var(--radius-lg)',
-        xl: 'var(--radius-xl)',
-      },
-      boxShadow: {
-        card: 'var(--shadow-card)',
-      },
-    },
-  },
-};
+| Category      | Pattern                    | Example                  |
+| ------------- | -------------------------- | ------------------------ |
+| Color         | `--color-[role]`           | `--color-warning`        |
+| Color variant | `--color-[role]-[variant]` | `--color-warning-subtle` |
+| Spacing       | `--spacing-[name]`         | `--spacing-page-x`       |
+| Border radius | `--radius-[size]`          | `--radius-lg`            |
+| Shadow        | `--shadow-[name]`          | `--shadow-card`          |
+| Transition    | `--transition-[name]`      | `--transition-base`      |
+
+### Step 2 — Register it in `tailwind.css`
+
+Add a matching entry in the `@theme inline` block so the token becomes a Tailwind utility:
+
+```css
+/* styles/tailwind.css */
+@theme inline {
+  /* existing entries... */
+  --color-warning: var(--color-warning);
+  --color-warning-subtle: var(--color-warning-subtle);
+}
 ```
 
-Now you can write `bg-surface`, `text-primary`, `rounded-lg`, `shadow-card` as Tailwind classes.
+### Step 3 — Use as a Tailwind utility
+
+Tailwind generates utilities from `@theme` entries automatically:
+
+```tsx
+// bg-warning, text-warning, border-warning, etc. are now available
+<div className="bg-warning-subtle border border-warning text-warning rounded-md px-3 py-2">
+  Warning message
+</div>
+```
 
 ---
 
-## \_animations.scss — keyframes only
+## Adding an Animation — Step by Step
 
-Define `@keyframes` here. Apply them via Tailwind `animate-*` utilities or inline `animation` classes.
+### Step 1 — Define the `@keyframes` in `_animations.scss`
 
 ```scss
 // styles/_animations.scss
-@keyframes fade-in {
+
+@keyframes slide-in-right {
   from {
-    opacity: 0;
-    transform: translateY(4px);
+    transform: translateX(100%);
   }
   to {
-    opacity: 1;
-    transform: translateY(0);
+    transform: translateX(0);
   }
+}
+```
+
+### Step 2 — Register it in `tailwind.css`
+
+Add the animation and its keyframes to the `@theme` block:
+
+```css
+/* styles/tailwind.css */
+@theme inline {
+  /* existing tokens... */
+
+  --animate-slide-in-right: slide-in-right 0.25s ease;
 }
 
 @keyframes slide-in-right {
@@ -145,77 +195,174 @@ Define `@keyframes` here. Apply them via Tailwind `animate-*` utilities or inlin
     transform: translateX(0);
   }
 }
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
 ```
 
-Register them in Tailwind config to use as utilities:
+In Tailwind v4, `--animate-*` keys in `@theme` generate `animate-*` utility classes, and `@keyframes` defined outside `@theme` are bundled automatically.
 
-```ts
-// tailwind.config.ts
-theme: {
-  extend: {
-    animation: {
-      "fade-in":       "fade-in 0.2s ease",
-      "slide-in-right":"slide-in-right 0.25s ease",
-    },
-    keyframes: {
-      "fade-in": {
-        from: { opacity: "0", transform: "translateY(4px)" },
-        to:   { opacity: "1", transform: "translateY(0)" },
-      },
-    },
-  },
-},
-```
-
-Usage in JSX:
+### Step 3 — Use in JSX
 
 ```tsx
-<div className="animate-fade-in">...</div>
+<div className="animate-slide-in-right">...</div>
 ```
+
+### Existing animations
+
+| Class             | Effect                           |
+| ----------------- | -------------------------------- |
+| `animate-fade-in` | Fades in with a 4px upward drift |
+| `animate-spin`    | Continuous 360° rotation         |
 
 ---
 
-## \_mixins.scss — reusable SCSS logic
+## Adding a Mixin — Step by Step
 
-Keep mixins small and purposeful. Use them only when a pattern cannot be expressed as a Tailwind utility.
+Mixins are for patterns that cannot be expressed as a Tailwind utility — complex multi-property rules reused across multiple SCSS contexts.
+
+### Step 1 — Add the mixin to `_mixins.scss`
 
 ```scss
 // styles/_mixins.scss
 
-// responsive container padding
-@mixin page-container {
-  padding-left: var(--spacing-page-x);
-  padding-right: var(--spacing-page-x);
-  max-width: 80rem;
-  margin: 0 auto;
-}
+// existing mixins...
 
-// visually hidden (accessible)
-@mixin sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border-width: 0;
-}
-
-// truncate text with ellipsis
-@mixin truncate {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+// focus ring consistent with design system
+@mixin focus-ring {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 ```
+
+### Step 2 — Use it in a `.module.scss` file
+
+```scss
+// modules/products/components/ProductCard/ProductCard.module.scss
+@use '@/styles/mixins' as *;
+
+.card:focus-visible {
+  @include focus-ring;
+}
+```
+
+### Existing mixins
+
+| Mixin            | What it does                                          |
+| ---------------- | ----------------------------------------------------- |
+| `page-container` | Horizontal page padding + max-width + centered margin |
+| `truncate`       | Single-line text truncation with ellipsis             |
+
+---
+
+## Styling a Component — Step by Step
+
+Most components need only Tailwind. Reach for a `.module.scss` file only when Tailwind cannot express the style.
+
+### Step 1 — Use Tailwind utilities directly in JSX
+
+Tailwind handles layout, spacing, color, typography, responsive, hover, focus:
+
+```tsx
+// modules/products/components/ProductCard/ProductCard.tsx
+export function ProductCard({ product }: { product: Product }) {
+  return (
+    <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+      <h3 className="text-sm font-semibold text-zinc-900 truncate">
+        {product.name}
+      </h3>
+      <p className="mt-1 text-xs text-zinc-500">{product.category}</p>
+    </div>
+  );
+}
+```
+
+No `.module.scss` file needed — Tailwind covers everything here.
+
+### Step 2 — Add a `.module.scss` only for what Tailwind cannot express
+
+Create `[Name].module.scss` in the same folder **only** when you need:
+
+- Complex pseudo-selectors (`:nth-child`, `::before`/`::after` with generated content)
+- `:focus-within` combined with sibling selectors
+- Multi-step CSS animations tied specifically to this component
+- `:global()` overrides for deeply nested third-party elements
+
+```scss
+// ProductCard/ProductCard.module.scss
+@use '@/styles/mixins' as *;
+@use '@/styles/variables' as *;
+
+// animated underline on the card title — not expressible in Tailwind
+.title::after {
+  content: '';
+  display: block;
+  height: 2px;
+  background: var(--color-primary);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--transition-base);
+}
+
+.card:hover .title::after {
+  transform: scaleX(1);
+}
+```
+
+```tsx
+// ProductCard/ProductCard.tsx
+import styles from './ProductCard.module.scss';
+
+export function ProductCard({ product }: { product: Product }) {
+  return (
+    <div
+      className={`rounded-lg border border-zinc-200 bg-white p-4 ${styles.card}`}
+    >
+      <h3 className={`text-sm font-semibold text-zinc-900 ${styles.title}`}>
+        {product.name}
+      </h3>
+    </div>
+  );
+}
+```
+
+### Step 3 — Add the barrel index.ts
+
+```ts
+// ProductCard/index.ts
+export { ProductCard } from './ProductCard';
+```
+
+### When to reach for each tool
+
+| Situation                                              | Tool           |
+| ------------------------------------------------------ | -------------- |
+| Layout, spacing, color, typography                     | Tailwind       |
+| Responsive variants (`md:`, `lg:`)                     | Tailwind       |
+| State variants (`hover:`, `focus:`, `disabled:`)       | Tailwind       |
+| `::before` / `::after` with `content`                  | `.module.scss` |
+| `:focus-within` + child selector                       | `.module.scss` |
+| Animate a third-party element you can't add a class to | `.module.scss` |
+
+---
+
+## CSS Variables in Components
+
+Design tokens from `_variables.scss` are available everywhere as CSS custom properties. In Tailwind utilities they map to the classes registered in `@theme`. In `.module.scss` files use them directly via `var()`.
+
+```scss
+// .module.scss — use var() directly
+.badge {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-base);
+}
+```
+
+```tsx
+// JSX — use the Tailwind utility class (registered in @theme)
+<span className="border border-border rounded-sm">...</span>
+```
+
+Never hardcode raw values in either place — if the token doesn't exist yet, add it first (see [Adding a Design Token](#adding-a-design-token--step-by-step)).
 
 ---
 
@@ -345,19 +492,20 @@ Export the wrapper from `index.ts` the same way as any other component.
 
 ```scss
 // ❌ style a specific component in SCSS
-.users-table {
+.product-card {
   border-radius: 8px;
   padding: 1rem;
 }
 // ✅ use Tailwind utilities directly on the element: className="rounded-lg p-4"
 
-// ❌ hardcode a color value in SCSS
+// ❌ hardcode a raw color value in SCSS
 .badge { color: #4f46e5; }
-// ✅ define it as a CSS variable in _variables.scss, then use via Tailwind: text-primary
+// ✅ define it as a CSS variable in _variables.scss, wire it in tailwind.css @theme,
+//    then use the Tailwind utility: text-primary
 
 // ❌ define a one-off keyframe inline in a component file
 <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
-// ✅ define in _animations.scss, register in tailwind.config.ts, use animate-spin
+// ✅ define in _animations.scss, register in tailwind.css @theme, use animate-spin
 ```
 
 ```tsx
@@ -366,10 +514,14 @@ Export the wrapper from `index.ts` the same way as any other component.
 // ✅ create a wrapper: shared/ui/danger-button.tsx
 
 // ❌ mix inline style with Tailwind for the same property
-<div style={{ borderRadius: "8px" }} className="rounded-lg">
+<div style={{ borderRadius: '8px' }} className="rounded-lg">
 // ✅ pick one — prefer Tailwind
 
 // ❌ use arbitrary Tailwind values when a token exists
 <div className="text-[#4f46e5]">
-// ✅ add the color to _variables.scss + tailwind.config.ts, then: text-primary
+// ✅ add the color to _variables.scss → register in tailwind.css @theme → text-primary
+
+// ❌ use a Tailwind utility that has no token backing it
+<div className="bg-[var(--color-primary)]">
+// ✅ register --color-primary in @theme inline, then: bg-primary
 ```

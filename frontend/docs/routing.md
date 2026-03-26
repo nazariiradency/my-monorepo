@@ -14,226 +14,306 @@ A route file does **one thing**: declare the route and render the right page. Al
 
 ---
 
-## Layouts
-
-Layouts are shell components that wrap pages. They own the persistent UI frame — sidebar, header, top nav, auth redirect logic.
+## Folder Structure
 
 ```
-layouts/
-├── AuthLayout.tsx          # Unauthenticated shell — centered card, no nav
-└── ProtectedLayout.tsx     # Authenticated shell — sidebar + header + outlet
-```
-
-```tsx
-// layouts/ProtectedLayout.tsx
-import { Outlet, useNavigate } from '@tanstack/react-router';
-import { useAppStore } from '@/shared/stores';
-import { Sidebar } from '@/shared/ui/sidebar';
-import { Header } from '@/shared/ui/header';
-
-export function ProtectedLayout() {
-  const session = useAppStore((s) => s.session);
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!session) navigate({ to: '/login' });
-  }, [session]);
-
-  return (
-    <div className="flex h-screen">
-      <Sidebar />
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <Header />
-        <main className="flex-1 overflow-y-auto p-6">
-          <Outlet />
-        </main>
-      </div>
-    </div>
-  );
-}
-```
-
-```tsx
-// layouts/AuthLayout.tsx
-import { Outlet } from '@tanstack/react-router';
-
-export function AuthLayout() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-50">
-      <div className="w-full max-w-md">
-        <Outlet />
-      </div>
-    </div>
-  );
-}
+src/
+├── layouts/
+│   ├── AuthLayout/
+│   │   ├── AuthLayout.tsx
+│   │   ├── AuthLayout.module.scss
+│   │   └── index.ts
+│   └── ProtectedLayout/
+│       ├── ProtectedLayout.tsx
+│       ├── ProtectedLayout.module.scss
+│       └── index.ts
+│
+├── pages/
+│   ├── _auth/
+│   │   ├── LoginPage/
+│   │   │   ├── LoginPage.tsx
+│   │   │   ├── LoginPage.module.scss
+│   │   │   └── index.ts
+│   │   └── RegisterPage/
+│   │       ├── RegisterPage.tsx
+│   │       └── index.ts
+│   └── _protected/
+│       └── [module]/
+│           ├── [Module]ListPage/
+│           │   ├── [Module]ListPage.tsx
+│           │   └── index.ts
+│           └── [Module]DetailPage/
+│               ├── [Module]DetailPage.tsx
+│               └── index.ts
+│
+└── routes/
+    ├── __root.tsx                  # Root route — declares QueryClient context
+    ├── index.tsx                   # Redirect from / to first protected page
+    ├── _auth.tsx                   # Layout route → AuthLayout
+    ├── _auth/
+    │   ├── login.tsx               # → LoginPage
+    │   └── register.tsx            # → RegisterPage
+    ├── _protected.tsx              # Layout route → ProtectedLayout
+    └── _protected/
+        └── [module]/
+            ├── index.tsx           # → [Module]ListPage  +  loader
+            └── $[id].tsx           # → [Module]DetailPage  +  loader
 ```
 
 ---
 
-## Pages
+## Adding a Route — Step by Step
 
-Pages compose module components into a complete view. They read route params, handle dialog state, and render. No business logic.
+### Step 1 — Create the page component
 
-```
-pages/
-├── _auth/
-│   ├── LoginPage.tsx
-│   └── RegisterPage.tsx
-└── _protected/
-    └── users/
-        ├── UsersListPage.tsx
-        ├── UserDetailPage.tsx
-        └── UserCreatePage.tsx
-```
+Pages live in `pages/_protected/[module]/` or `pages/_auth/`. They compose module components — no business logic, no direct hooks other than the store.
 
 ```tsx
-// pages/_protected/users/UsersListPage.tsx
+// pages/_protected/products/ProductsListPage/ProductsListPage.tsx
+import { Plus } from 'lucide-react';
+import { Button } from '@/shared/ui';
 import {
-  UsersTable,
-  CreateUserDialog,
-  EditUserDialog,
-  DeleteUserDialog,
-  useUsersStore,
-} from '@/modules/users';
+  ProductsTable,
+  CreateProductDialog,
+  EditProductDialog,
+  DeleteProductDialog,
+  useProductsStore,
+} from '@/modules/products';
 
-export function UsersListPage() {
-  const { dialogMode, openCreate } = useUsersStore();
+export function ProductsListPage() {
+  const dialogMode = useProductsStore((s) => s.dialogMode);
+  const selectedProduct = useProductsStore((s) => s.selectedProduct);
+  const openCreate = useProductsStore((s) => s.openCreate);
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-zinc-900">Users</h1>
+          <h1 className="text-2xl font-semibold text-zinc-900">Products</h1>
           <p className="text-sm text-zinc-500 mt-1">
-            Manage your team members.
+            Manage your product catalog.
           </p>
         </div>
-        <button onClick={openCreate} className="btn-primary">
-          + New user
-        </button>
+        <Button onClick={openCreate} className="gap-2 self-start sm:self-auto">
+          <Plus className="h-4 w-4" />
+          New product
+        </Button>
       </div>
 
-      <UsersTable />
+      <ProductsTable />
 
-      {dialogMode === 'create' && <CreateUserDialog />}
-      {dialogMode === 'edit' && <EditUserDialog />}
-      {dialogMode === 'delete' && <DeleteUserDialog />}
+      {dialogMode === 'create' && <CreateProductDialog />}
+      {dialogMode === 'edit' && selectedProduct && (
+        <EditProductDialog product={selectedProduct} />
+      )}
+      {dialogMode === 'delete' && selectedProduct && (
+        <DeleteProductDialog product={selectedProduct} />
+      )}
     </div>
   );
 }
 ```
 
-```tsx
-// pages/_protected/users/UserDetailPage.tsx
-import { useParams } from '@tanstack/react-router';
-import { UserDetail } from '@/modules/users';
+Add the barrel:
 
-export function UserDetailPage() {
-  const { userId } = useParams({ from: '/_protected/users/$userId' });
-  return <UserDetail userId={userId} />;
-}
+```ts
+// pages/_protected/products/ProductsListPage/index.ts
+export { ProductsListPage } from './ProductsListPage';
 ```
 
 ---
 
-## Routes
+### Step 2 — Create the route file
 
-Route files are thin. They declare the route with `createFileRoute` and render the page. Nothing else.
+Route files are thin. They call `createFileRoute`, set a `component`, and optionally add a `loader` to prefetch data.
 
+```ts
+// routes/_protected/products/index.tsx
+import { createFileRoute } from '@tanstack/react-router';
+import { ProductsListPage } from '@/pages/_protected/products/ProductsListPage';
+import { productsListOptions } from '@/modules/products';
+
+export const Route = createFileRoute('/_protected/products/')({
+  component: ProductsListPage,
+  loader: ({ context: { queryClient } }) =>
+    queryClient.ensureQueryData(productsListOptions()),
+});
 ```
-routes/
-├── __root.tsx                  # Root route
-├── _auth.tsx                   # Layout route → AuthLayout
-├── _auth/
-│   ├── login.tsx               # → LoginPage
-│   └── register.tsx            # → RegisterPage
-├── _protected.tsx              # Layout route → ProtectedLayout
-└── _protected/
-    └── users/
-        ├── index.tsx           # → UsersListPage
-        └── $userId.tsx         # → UserDetailPage
+
+The file path **is** the URL — `routes/_protected/products/index.tsx` → `/products`.
+
+---
+
+### Step 3 — Verify the route tree is regenerated
+
+TanStack Router auto-generates `src/routeTree.gen.ts` when the dev server is running. After creating the file, confirm the route appears in `routeTree.gen.ts`. You do not edit that file manually.
+
+---
+
+### Step 4 — Add a nav link in the layout (if needed)
+
+Add a `<Link>` in `ProtectedLayout.tsx` for the new section:
+
+```tsx
+// layouts/ProtectedLayout/ProtectedLayout.tsx
+import { Link } from '@tanstack/react-router';
+
+// inside the <nav>
+<Link
+  to="/products"
+  className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+>
+  <Package className="h-4 w-4" />
+  Products
+</Link>;
 ```
 
-### Layout routes
+---
 
-Layout routes render the layout with `<Outlet />` — TanStack Router injects child routes into the outlet:
+## Dynamic Routes (with params)
+
+### Detail page
+
+```tsx
+// pages/_protected/products/ProductDetailPage/ProductDetailPage.tsx
+import { useParams } from '@tanstack/react-router';
+import { ProductDetail } from '@/modules/products';
+
+export function ProductDetailPage() {
+  const { productId } = useParams({ from: '/_protected/products/$productId' });
+  return <ProductDetail productId={productId} />;
+}
+```
+
+### Detail route
+
+```ts
+// routes/_protected/products/$productId.tsx
+import { createFileRoute } from '@tanstack/react-router';
+import { ProductDetailPage } from '@/pages/_protected/products/ProductDetailPage';
+import { productDetailOptions } from '@/modules/products';
+
+export const Route = createFileRoute('/_protected/products/$productId')({
+  component: ProductDetailPage,
+  loader: ({ context: { queryClient }, params }) =>
+    queryClient.ensureQueryData(productDetailOptions(params.productId)),
+});
+```
+
+The `$` prefix in the filename becomes the param name (`$productId` → `params.productId`).
+
+---
+
+## Root and Layout Routes
+
+These are set up once and almost never changed.
+
+### \_\_root.tsx — declares QueryClient context
+
+```ts
+// routes/__root.tsx
+import { createRootRouteWithContext, Outlet } from '@tanstack/react-router';
+import type { QueryClient } from '@tanstack/react-query';
+
+export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  component: () => <Outlet />,
+});
+```
+
+### Layout routes — connect layouts to URL prefixes
 
 ```ts
 // routes/_protected.tsx
+import { createFileRoute } from '@tanstack/react-router';
+import { ProtectedLayout } from '@/layouts/ProtectedLayout';
+
 export const Route = createFileRoute('/_protected')({
   component: ProtectedLayout,
 });
 
 // routes/_auth.tsx
+import { createFileRoute } from '@tanstack/react-router';
+import { AuthLayout } from '@/layouts/AuthLayout';
+
 export const Route = createFileRoute('/_auth')({
   component: AuthLayout,
 });
 ```
 
-### Page routes
+All routes nested under `/_protected/` automatically render inside `ProtectedLayout`. The layout renders `<Outlet />` where child pages appear.
+
+### index.tsx — redirect from root
 
 ```ts
-// routes/_protected/users/index.tsx
-export const Route = createFileRoute('/_protected/users/')({
-  component: UsersListPage,
-  loader: ({ context: { queryClient } }) =>
-    queryClient.ensureQueryData(usersListOptions()),
-});
+// routes/index.tsx
+import { createFileRoute, redirect } from '@tanstack/react-router';
 
-// routes/_protected/users/$userId.tsx
-export const Route = createFileRoute('/_protected/users/$userId')({
-  component: UserDetailPage,
-  loader: ({ context: { queryClient }, params }) =>
-    queryClient.ensureQueryData(userDetailOptions(params.userId)),
+export const Route = createFileRoute('/')({
+  beforeLoad: () => {
+    throw redirect({ to: '/products' });
+  },
 });
 ```
 
-### Auth route
+---
+
+## Loaders
+
+Loaders run before the component renders. Use `ensureQueryData` — it serves cached data when available and only fetches when the cache is stale.
 
 ```ts
-// routes/_auth/login.tsx
-export const Route = createFileRoute('/_auth/login')({
-  component: LoginPage,
-});
+// ✅ prefer ensureQueryData — reuses TanStack Query cache
+loader: ({ context: { queryClient } }) =>
+  queryClient.ensureQueryData(productsListOptions()),
+
+// ❌ avoid fetchQuery in loaders — always goes to the network
+loader: ({ context: { queryClient } }) =>
+  queryClient.fetchQuery(productsListOptions()),
 ```
+
+The `queryOptions` objects used in loaders come from `modules/[name]/api.ts` and are re-exported through the module's `index.ts`.
 
 ---
 
 ## Type-Safe Navigation
 
 ```ts
-import { useNavigate, Link } from "@tanstack/react-router"
+import { useNavigate, Link } from '@tanstack/react-router';
 
-// imperative
-const navigate = useNavigate()
-navigate({ to: "/_protected/users/$userId", params: { userId: user.id } })
+// imperative — navigate programmatically
+const navigate = useNavigate();
+navigate({ to: '/_protected/products/$productId', params: { productId: product.id } });
 
-// declarative
-<Link to="/_protected/users/$userId" params={{ userId: user.id }}>
-  View profile
+// declarative — render a link
+<Link to="/_protected/products/$productId" params={{ productId: product.id }}>
+  View product
 </Link>
 ```
 
+TypeScript will error if `params` is missing or the route path is wrong.
+
 ---
 
-## Route Context (queryClient)
+## QueryClient in main.tsx
 
-Pass `queryClient` through router context so loaders can prefetch:
+Pass `queryClient` into the router context so every loader can access it:
 
-```ts
+```tsx
 // main.tsx
+import { QueryClientProvider } from '@tanstack/react-query';
+import { RouterProvider, createRouter } from '@tanstack/react-router';
+import { routeTree } from './routeTree.gen';
+import { queryClient } from '@/shared/lib/queryClient';
+
 const router = createRouter({
   routeTree,
   context: { queryClient },
 });
-```
 
-```ts
-// Declare context type in __root.tsx
-export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
-  {
-    component: RootComponent,
-  }
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <QueryClientProvider client={queryClient}>
+    <RouterProvider router={router} />
+  </QueryClientProvider>
 );
 ```
 
@@ -244,5 +324,36 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 - Route files render exactly one page component — no JSX logic in route files.
 - Layouts live in `layouts/` — never inline layout JSX in a route file.
 - Pages live in `pages/` — they are the only place that composes multiple module components together.
-- Use loaders to prefetch data — prefer `ensureQueryData` over `fetchQuery` so cached data is reused.
-- Always mirror the folder structure: `pages/_protected/users/` ↔ `routes/_protected/users/`.
+- Always use `ensureQueryData` in loaders — not `fetchQuery`.
+- Mirror folder structure: `pages/_protected/products/` ↔ `routes/_protected/products/`.
+- Never import from `@/modules/[name]/internal/path` — use the module barrel only.
+
+---
+
+## Anti-Patterns
+
+```ts
+// ❌ business logic or hooks in a route file
+export const Route = createFileRoute('/_protected/products/')({
+  component: () => {
+    const { data } = useProducts(); // ← no
+    return <div>{data?.map(...)}</div>;
+  },
+});
+// ✅ extract to a page component in pages/
+
+// ❌ inline layout in a route file
+export const Route = createFileRoute('/_protected')({
+  component: () => (
+    <div className="flex h-screen">
+      <Sidebar />
+      <Outlet />
+    </div>
+  ),
+});
+// ✅ move to layouts/ProtectedLayout/ProtectedLayout.tsx
+
+// ❌ navigate by string concatenation
+window.location.href = '/products/' + id;
+// ✅ navigate({ to: '/_protected/products/$productId', params: { productId: id } })
+```
