@@ -222,31 +222,7 @@ export function ProductsTable() {
 }
 ```
 
-In a page (rendering the right dialog):
-
-```tsx
-// pages/_protected/products/ProductsListPage/ProductsListPage.tsx
-export function ProductsListPage() {
-  const dialogMode = useProductsStore((s) => s.dialogMode);
-  const selectedProduct = useProductsStore((s) => s.selectedProduct);
-  const openCreate = useProductsStore((s) => s.openCreate);
-
-  return (
-    <>
-      <Button onClick={openCreate}>New product</Button>
-      <ProductsTable />
-
-      {dialogMode === 'create' && <CreateProductDialog />}
-      {dialogMode === 'edit' && selectedProduct && (
-        <EditProductDialog product={selectedProduct} />
-      )}
-      {dialogMode === 'delete' && selectedProduct && (
-        <DeleteProductDialog product={selectedProduct} />
-      )}
-    </>
-  );
-}
-```
+For wiring dialogs in a page component, see [docs/routing.md](./routing.md).
 
 In a mutation hook (closing the dialog after success):
 

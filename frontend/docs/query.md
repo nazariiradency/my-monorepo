@@ -23,7 +23,7 @@ import { QueryClient } from '@tanstack/react-query';
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // cache is fresh for 5 minutes — no refetch during this window
+      staleTime: 1000 * 60 * 5, // cache is fresh for 5 minutes
       retry: 1, // retry failed requests once before showing an error
     },
   },
@@ -33,7 +33,11 @@ export const queryClient = new QueryClient({
 ```tsx
 // main.tsx
 import { QueryClientProvider } from '@tanstack/react-query';
+import { RouterProvider, createRouter } from '@tanstack/react-router';
+import { routeTree } from './routeTree.gen';
 import { queryClient } from '@/shared/lib/queryClient';
+
+const router = createRouter({ routeTree, context: { queryClient } });
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <QueryClientProvider client={queryClient}>
@@ -58,13 +62,12 @@ All three live together in `modules/[name]/api.ts`. Nothing else goes here.
 Keys are hierarchical arrays. This lets you invalidate by any level of specificity.
 
 ```ts
-// modules/products/api.ts
 export const productKeys = {
   all: () => ['products'] as const, // invalidates everything in this module
   lists: () => ['products', 'list'] as const, // invalidates all list variants
   list: (page: number, limit: number) =>
-    ['products', 'list', { page, limit }] as const, // one specific paginated page
-  detail: (id: string) => ['products', 'detail', id] as const, // one item
+    ['products', 'list', { page, limit }] as const,
+  detail: (id: string) => ['products', 'detail', id] as const,
 };
 ```
 
@@ -142,8 +145,6 @@ Components never call `useQuery` or `useMutation` directly — always through a 
 ---
 
 ## Query Hooks — useQuery
-
-Wrap `queryOptions` with `useQuery`. Return the full result so components get `data`, `isLoading`, `isError`, `isFetching`.
 
 ```ts
 // modules/products/hooks/useProducts.ts
@@ -228,44 +229,16 @@ export function useCreateProduct() {
 
 ### Update — pre-filled form
 
-```ts
-// modules/products/hooks/useUpdateProduct.ts
-export function useUpdateProduct(product: Product) {
-  const qc = useQueryClient();
-  const closeDialog = useProductsStore((s) => s.closeDialog);
-
-  const form = useForm<UpdateProductPayload>({
-    resolver: zodResolver(updateProductSchema),
-    defaultValues: {
-      name: product.name,
-      price: product.price,
-      category: product.category,
-    },
-  });
-
-  const mutation = useMutation({
-    mutationFn: (data: UpdateProductPayload) =>
-      updateProduct({ id: product.id, ...data }),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: productKeys.lists() });
-      void qc.invalidateQueries({ queryKey: productKeys.detail(product.id) });
-      closeDialog();
-    },
-  });
-
-  return {
-    form,
-    onSubmit: form.handleSubmit((data) => mutation.mutate(data)),
-    isPending: mutation.isPending,
-    isError: mutation.isError,
-  };
-}
-```
+Same pattern as Create, but `defaultValues` is seeded from the existing item and both list and detail caches are invalidated on success. See [docs/forms.md](./forms.md) for full example.
 
 ### Delete — no form, just a confirm callback
 
 ```ts
 // modules/products/hooks/useDeleteProduct.ts
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { deleteProduct, productKeys } from '../api';
+import { useProductsStore } from '../store';
+
 export function useDeleteProduct(id: string) {
   const qc = useQueryClient();
   const closeDialog = useProductsStore((s) => s.closeDialog);
@@ -286,42 +259,7 @@ export function useDeleteProduct(id: string) {
 }
 ```
 
-### Toggle / inline action — no form, no dialog
-
-For actions that fire directly from a table row (e.g. toggling a checkbox), no dialog or form is involved:
-
-```ts
-// modules/products/hooks/useToggleProduct.ts
-export function useToggleProduct() {
-  const qc = useQueryClient();
-
-  const mutation = useMutation({
-    mutationFn: ({ id, active }: { id: string; active: boolean }) =>
-      updateProduct({ id, active }),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: productKeys.lists() });
-    },
-  });
-
-  return { toggle: mutation.mutate, isPending: mutation.isPending };
-}
-```
-
-Usage in a component:
-
-```tsx
-const { toggle } = useToggleProduct();
-<Checkbox
-  checked={product.active}
-  onCheckedChange={(checked) =>
-    toggle({ id: product.id, active: Boolean(checked) })
-  }
-/>;
-```
-
----
-
-## hooks/index.ts — barrel
+### hooks/index.ts — barrel
 
 ```ts
 // modules/products/hooks/index.ts
@@ -330,7 +268,6 @@ export { useProduct } from './useProduct';
 export { useCreateProduct } from './useCreateProduct';
 export { useUpdateProduct } from './useUpdateProduct';
 export { useDeleteProduct } from './useDeleteProduct';
-export { useToggleProduct } from './useToggleProduct';
 ```
 
 ---
@@ -360,13 +297,11 @@ Key hierarchy:
 ['products', 'detail', id]             ← productKeys.detail() — matches one item
 ```
 
-`invalidateQueries` matches by prefix, so `productKeys.lists()` catches all variants of the list regardless of page/limit params.
+`invalidateQueries` matches by prefix, so `productKeys.lists()` catches all variants regardless of page/limit params.
 
 ---
 
 ## axios Instance — shared/lib/axios.ts
-
-The `api` instance imported in every `api.ts` file is configured in `shared/lib/axios.ts`:
 
 ```ts
 // shared/lib/axios.ts
@@ -434,12 +369,5 @@ loader: ({ context: { queryClient } }) =>
 // ✅ queryClient.ensureQueryData(productsListOptions()) — reuses cache when fresh
 
 // ❌ queryOptions defined twice (once in hook, once in loader)
-// hooks/useProducts.ts
-useQuery({ queryKey: productKeys.lists(), queryFn: fetchProducts });
-// routes/…/index.tsx
-queryClient.ensureQueryData({
-  queryKey: productKeys.lists(),
-  queryFn: fetchProducts,
-});
 // ✅ define once in api.ts as productsListOptions(), import everywhere
 ```

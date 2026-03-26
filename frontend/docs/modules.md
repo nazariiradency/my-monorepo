@@ -48,7 +48,6 @@ Define all Zod schemas here. Infer every TypeScript type from them — never wri
 // modules/products/schema.ts
 import { z } from 'zod/v3';
 
-// Entity schema — mirrors the API response shape
 export const productSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -58,16 +57,6 @@ export const productSchema = z.object({
   updatedAt: z.string(),
 });
 
-// Paginated list wrapper
-export const paginatedProductsSchema = z.object({
-  items: z.array(productSchema),
-  total: z.number(),
-  page: z.number(),
-  limit: z.number(),
-  totalPages: z.number(),
-});
-
-// Mutation payloads — only the fields the user submits
 export const createProductSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   price: z.number().positive('Price must be positive'),
@@ -82,7 +71,6 @@ export const updateProductSchema = z.object({
 
 // Infer types — never write these by hand
 export type Product = z.infer<typeof productSchema>;
-export type PaginatedProducts = z.infer<typeof paginatedProductsSchema>;
 export type CreateProductPayload = z.infer<typeof createProductSchema>;
 export type UpdateProductPayload = z.infer<typeof updateProductSchema>;
 ```
@@ -99,12 +87,10 @@ import { queryOptions } from '@tanstack/react-query';
 import { api } from '@/shared/lib';
 import type {
   Product,
-  PaginatedProducts,
   CreateProductPayload,
   UpdateProductPayload,
 } from './schema';
 
-// Query key factory — keeps cache invalidation consistent
 export const productKeys = {
   all: () => ['products'] as const,
   lists: () => ['products', 'list'] as const,
@@ -113,11 +99,7 @@ export const productKeys = {
   detail: (id: string) => ['products', 'detail', id] as const,
 };
 
-// Fetchers — one function per endpoint
-export const fetchProducts = (
-  page = 1,
-  limit = 10
-): Promise<PaginatedProducts> =>
+export const fetchProducts = (page = 1, limit = 10) =>
   api.get('/products', { params: { page, limit } }).then((r) => r.data);
 
 export const fetchProduct = (id: string): Promise<Product> =>
@@ -135,7 +117,7 @@ export const updateProduct = ({
 export const deleteProduct = (id: string): Promise<void> =>
   api.delete(`/products/${id}`).then(() => undefined);
 
-// queryOptions — wrap fetchers for use in loaders and prefetch
+// queryOptions — wrap fetchers for use in hooks and route loaders
 export const productsListOptions = (page = 1, limit = 10) =>
   queryOptions({
     queryKey: productKeys.list(page, limit),
@@ -151,11 +133,11 @@ export const productDetailOptions = (id: string) =>
 
 ---
 
-### Step 3 — store/[name]Slice.ts
+### Step 3 — store/
 
-Zustand slice for UI state: which dialog is open, the selected item, pagination cursor, filters. No server data here — that belongs to TanStack Query.
+Zustand slice for UI state: which dialog is open, the selected item, pagination cursor. No server data here — that belongs to TanStack Query.
 
-See the [full guide below](#creating-a-store-slice).
+See [docs/state.md](./state.md) for the full guide.
 
 ---
 
@@ -171,7 +153,7 @@ One hook file per intent. Each hook owns exactly one concern.
 | `useUpdateProduct.ts` | `useMutation` + `useForm` | `{ form, onSubmit, isPending }` |
 | `useDeleteProduct.ts` | `useMutation`             | `{ onConfirm, isPending }`      |
 
-See the [full guide below](#creating-a-mutation-hook).
+See [docs/query.md](./query.md) and [docs/forms.md](./forms.md) for full implementation examples.
 
 ---
 
@@ -179,7 +161,7 @@ See the [full guide below](#creating-a-mutation-hook).
 
 Components call hooks and render. No direct `useQuery`/`useMutation`, no business logic.
 
-See the [full guide below](#creating-a-component).
+See [Creating a Component](#creating-a-component) below.
 
 ---
 
@@ -190,7 +172,6 @@ The public barrel. Other modules and pages import **only** from `modules/[name]/
 ```ts
 // modules/products/index.ts
 export { ProductsTable } from './components/ProductsTable';
-export { ProductPagination } from './components/ProductPagination';
 export {
   CreateProductDialog,
   EditProductDialog,
@@ -209,7 +190,6 @@ export type {
   Product,
   CreateProductPayload,
   UpdateProductPayload,
-  PaginatedProducts,
 } from './schema';
 ```
 
@@ -238,7 +218,7 @@ components/ProductDialogs/
 
 ### The component file
 
-The `[Name]Dialogs` component is split into one export per dialog variant. Each dialog reads from the store to know whether it is open, and calls the relevant hook for its form/mutation logic.
+The `[Name]Dialogs` component exports one named export per dialog variant. Each dialog reads from the store to know whether it is open, and calls the relevant hook.
 
 ```tsx
 // modules/products/components/ProductDialogs/ProductDialogs.tsx
@@ -252,11 +232,7 @@ import {
   Button,
 } from '@/shared/ui';
 import { ProductForm } from '../ProductForm';
-import {
-  useCreateProduct,
-  useUpdateProduct,
-  useDeleteProduct,
-} from '../../hooks';
+import { useCreateProduct, useDeleteProduct } from '../../hooks';
 import { useProductsStore } from '../../store';
 import type { Product } from '../../schema';
 
@@ -284,37 +260,7 @@ export function CreateProductDialog() {
   );
 }
 
-interface EditProductDialogProps {
-  product: Product;
-}
-
-export function EditProductDialog({ product }: EditProductDialogProps) {
-  const closeDialog = useProductsStore((s) => s.closeDialog);
-  const { form, onSubmit, isPending } = useUpdateProduct(product);
-
-  return (
-    <Dialog open onOpenChange={closeDialog}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Edit Product</DialogTitle>
-          <DialogDescription>Update the product details.</DialogDescription>
-        </DialogHeader>
-        <ProductForm
-          form={form}
-          onSubmit={onSubmit}
-          isPending={isPending}
-          submitLabel="Save changes"
-        />
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-interface DeleteProductDialogProps {
-  product: Product;
-}
-
-export function DeleteProductDialog({ product }: DeleteProductDialogProps) {
+export function DeleteProductDialog({ product }: { product: Product }) {
   const closeDialog = useProductsStore((s) => s.closeDialog);
   const { onConfirm, isPending } = useDeleteProduct(product.id);
 
@@ -346,9 +292,9 @@ export function DeleteProductDialog({ product }: DeleteProductDialogProps) {
 }
 ```
 
-### The barrel index.ts
+`EditProductDialog` follows the same pattern as `CreateProductDialog` but accepts a `product` prop and calls `useUpdateProduct(product)` instead.
 
-Re-export every named export from the component file:
+### The barrel index.ts
 
 ```ts
 // modules/products/components/ProductDialogs/index.ts
@@ -359,264 +305,12 @@ export {
 } from './ProductDialogs';
 ```
 
-Consumers import from the folder, not the file:
-
 ```ts
-// ✅ correct
+// ✅ import from the folder, not the file
 import { CreateProductDialog } from '../components/ProductDialogs';
 
-// ❌ wrong — import from the file directly
+// ❌ import from the file directly
 import { CreateProductDialog } from '../components/ProductDialogs/ProductDialogs';
-```
-
----
-
-## Creating a Mutation Hook
-
-Mutation hooks (`useCreate`, `useUpdate`, `useDelete`) combine `useMutation` with `useForm`. They own the full submit lifecycle: validation → mutate → invalidate cache → close dialog → reset form.
-
-### useCreate[Name].ts
-
-```ts
-// modules/products/hooks/useCreateProduct.ts
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { createProduct, productKeys } from '../api';
-import { createProductSchema, type CreateProductPayload } from '../schema';
-import { useProductsStore } from '../store';
-
-export function useCreateProduct() {
-  const qc = useQueryClient();
-  const closeDialog = useProductsStore((s) => s.closeDialog);
-
-  const form = useForm<CreateProductPayload>({
-    resolver: zodResolver(createProductSchema),
-    defaultValues: { name: '', price: 0, category: 'general' },
-  });
-
-  const mutation = useMutation({
-    mutationFn: createProduct,
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: productKeys.lists() });
-      form.reset();
-      closeDialog();
-    },
-  });
-
-  return {
-    form,
-    onSubmit: form.handleSubmit((data) => mutation.mutate(data)),
-    isPending: mutation.isPending,
-    isError: mutation.isError,
-  };
-}
-```
-
-**What each part does:**
-
-| Part                                   | Purpose                                                  |
-| -------------------------------------- | -------------------------------------------------------- |
-| `useForm` + `zodResolver`              | Validates input before the mutation fires                |
-| `mutationFn`                           | The `api.ts` fetcher — no HTTP logic in hooks            |
-| `invalidateQueries`                    | Forces TanStack Query to re-fetch the list after a write |
-| `form.reset()`                         | Clears the form fields after success                     |
-| `closeDialog()`                        | Dismisses the dialog via the Zustand store               |
-| Return `{ form, onSubmit, isPending }` | The component only needs these — keep the surface small  |
-
-### useUpdate[Name].ts — pre-filled form
-
-Same pattern, but `defaultValues` is seeded from the existing item passed in:
-
-```ts
-// modules/products/hooks/useUpdateProduct.ts
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { updateProduct, productKeys } from '../api';
-import {
-  updateProductSchema,
-  type UpdateProductPayload,
-  type Product,
-} from '../schema';
-import { useProductsStore } from '../store';
-
-export function useUpdateProduct(product: Product) {
-  const qc = useQueryClient();
-  const closeDialog = useProductsStore((s) => s.closeDialog);
-
-  const form = useForm<UpdateProductPayload>({
-    resolver: zodResolver(updateProductSchema),
-    defaultValues: {
-      name: product.name,
-      price: product.price,
-      category: product.category,
-    },
-  });
-
-  const mutation = useMutation({
-    mutationFn: (data: UpdateProductPayload) =>
-      updateProduct({ id: product.id, ...data }),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: productKeys.lists() });
-      void qc.invalidateQueries({ queryKey: productKeys.detail(product.id) });
-      closeDialog();
-    },
-  });
-
-  return {
-    form,
-    onSubmit: form.handleSubmit((data) => mutation.mutate(data)),
-    isPending: mutation.isPending,
-    isError: mutation.isError,
-  };
-}
-```
-
-### useDelete[Name].ts — no form
-
-Delete has no form, just a confirmation callback:
-
-```ts
-// modules/products/hooks/useDeleteProduct.ts
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { deleteProduct, productKeys } from '../api';
-import { useProductsStore } from '../store';
-
-export function useDeleteProduct(id: string) {
-  const qc = useQueryClient();
-  const closeDialog = useProductsStore((s) => s.closeDialog);
-
-  const mutation = useMutation({
-    mutationFn: () => deleteProduct(id),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: productKeys.lists() });
-      closeDialog();
-    },
-  });
-
-  return {
-    onConfirm: () => mutation.mutate(),
-    isPending: mutation.isPending,
-    isError: mutation.isError,
-  };
-}
-```
-
-### hooks/index.ts — barrel
-
-```ts
-// modules/products/hooks/index.ts
-export { useProducts } from './useProducts';
-export { useProduct } from './useProduct';
-export { useCreateProduct } from './useCreateProduct';
-export { useUpdateProduct } from './useUpdateProduct';
-export { useDeleteProduct } from './useDeleteProduct';
-```
-
----
-
-## Creating a Store Slice
-
-The Zustand slice manages UI state: which dialog is open, which item is selected, the current page. No server data — that lives in TanStack Query.
-
-### store/[name]Slice.ts
-
-```ts
-// modules/products/store/productsSlice.ts
-import { create } from 'zustand';
-import type { Product } from '../schema';
-
-type DialogMode = 'create' | 'edit' | 'delete' | null;
-
-interface ProductsStore {
-  // state
-  selectedProduct: Product | null;
-  dialogMode: DialogMode;
-  page: number;
-  // actions
-  openCreate: () => void;
-  openEdit: (product: Product) => void;
-  openDelete: (product: Product) => void;
-  closeDialog: () => void;
-  setPage: (page: number) => void;
-}
-
-export const useProductsStore = create<ProductsStore>((set) => ({
-  selectedProduct: null,
-  dialogMode: null,
-  page: 1,
-  openCreate: () => set({ dialogMode: 'create', selectedProduct: null }),
-  openEdit: (product) => set({ dialogMode: 'edit', selectedProduct: product }),
-  openDelete: (product) =>
-    set({ dialogMode: 'delete', selectedProduct: product }),
-  closeDialog: () => set({ dialogMode: null, selectedProduct: null }),
-  setPage: (page) => set({ page }),
-}));
-```
-
-**What each part does:**
-
-| Part                             | Purpose                                                                  |
-| -------------------------------- | ------------------------------------------------------------------------ |
-| `DialogMode`                     | Union type that encodes exactly which dialog can be open                 |
-| `selectedProduct`                | The item being edited or deleted — `null` when no dialog is open         |
-| `openCreate/openEdit/openDelete` | Called from table action buttons                                         |
-| `closeDialog`                    | Resets both `dialogMode` and `selectedProduct` at once                   |
-| `setPage`                        | Pagination cursor — components read this and pass it to their query hook |
-
-### store/index.ts — barrel
-
-```ts
-// modules/products/store/index.ts
-export { useProductsStore } from './productsSlice';
-```
-
-### Consuming the store in a component
-
-Read only the selector you need — never destructure the whole store:
-
-```tsx
-// ✅ correct — selector keeps re-renders focused
-const openCreate = useProductsStore((s) => s.openCreate);
-const dialogMode = useProductsStore((s) => s.dialogMode);
-
-// ❌ wrong — subscribes to every field, re-renders on any change
-const store = useProductsStore();
-```
-
-### Wiring dialogs from a page
-
-A typical list page reads `dialogMode` and `selectedProduct` from the store, then renders the appropriate dialog:
-
-```tsx
-// pages/_protected/products/ProductsListPage/ProductsListPage.tsx
-import {
-  ProductsTable,
-  CreateProductDialog,
-  EditProductDialog,
-  DeleteProductDialog,
-  useProductsStore,
-} from '@/modules/products';
-
-export function ProductsListPage() {
-  const dialogMode = useProductsStore((s) => s.dialogMode);
-  const selectedProduct = useProductsStore((s) => s.selectedProduct);
-
-  return (
-    <>
-      <ProductsTable />
-
-      {dialogMode === 'create' && <CreateProductDialog />}
-      {dialogMode === 'edit' && selectedProduct && (
-        <EditProductDialog product={selectedProduct} />
-      )}
-      {dialogMode === 'delete' && selectedProduct && (
-        <DeleteProductDialog product={selectedProduct} />
-      )}
-    </>
-  );
-}
 ```
 
 ---

@@ -106,8 +106,6 @@ import {
   FormMessage,
   Input,
   Button,
-} from '@/shared/ui';
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -132,7 +130,6 @@ export function ProductForm({
   return (
     <Form {...form}>
       <form onSubmit={onSubmit} className="space-y-4">
-        {/* Text input field */}
         <FormField
           control={form.control}
           name="name"
@@ -142,12 +139,11 @@ export function ProductForm({
               <FormControl>
                 <Input placeholder="Product name" {...field} />
               </FormControl>
-              <FormMessage /> {/* renders validation error automatically */}
+              <FormMessage />
             </FormItem>
           )}
         />
 
-        {/* Select field */}
         <FormField
           control={form.control}
           name="category"
@@ -191,7 +187,7 @@ export { ProductForm } from './ProductForm';
 
 ### Step 4 — Use the form in a dialog
 
-The dialog calls the hook, receives `{ form, onSubmit, isPending }`, and passes them straight into the form component. The dialog has no validation or mutation logic of its own.
+The dialog calls the hook, receives `{ form, onSubmit, isPending }`, and passes them straight into the form component.
 
 ```tsx
 // modules/products/components/ProductDialogs/ProductDialogs.tsx
@@ -217,53 +213,7 @@ export function CreateProductDialog() {
 }
 ```
 
----
-
-## Reusing the Form Component in Create vs Edit
-
-The form component is shared between create and edit. The hook provides pre-filled `defaultValues` for edit.
-
-```tsx
-// CreateProductDialog — uses useCreateProduct (empty defaults)
-export function CreateProductDialog() {
-  const closeDialog = useProductsStore((s) => s.closeDialog);
-  const { form, onSubmit, isPending } = useCreateProduct();
-
-  return (
-    <Dialog open onOpenChange={closeDialog}>
-      <DialogContent>
-        <ProductForm
-          form={form}
-          onSubmit={onSubmit}
-          isPending={isPending}
-          submitLabel="Create"
-        />
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// EditProductDialog — uses useUpdateProduct (pre-filled with existing values)
-export function EditProductDialog({ product }: { product: Product }) {
-  const closeDialog = useProductsStore((s) => s.closeDialog);
-  const { form, onSubmit, isPending } = useUpdateProduct(product);
-
-  return (
-    <Dialog open onOpenChange={closeDialog}>
-      <DialogContent>
-        <ProductForm
-          form={form}
-          onSubmit={onSubmit}
-          isPending={isPending}
-          submitLabel="Save changes"
-        />
-      </DialogContent>
-    </Dialog>
-  );
-}
-```
-
-The `useUpdateProduct` hook seeds `defaultValues` from the passed-in item:
+For edit dialogs, `useUpdateProduct(product)` seeds `defaultValues` from the passed-in item:
 
 ```ts
 const form = useForm<UpdateProductPayload>({
@@ -298,24 +248,6 @@ const form = useForm<UpdateProductPayload>({
 />
 ```
 
-### Textarea
-
-```tsx
-<FormField
-  control={form.control}
-  name="description"
-  render={({ field }) => (
-    <FormItem>
-      <FormLabel>Description</FormLabel>
-      <FormControl>
-        <Textarea rows={4} {...field} />
-      </FormControl>
-      <FormMessage />
-    </FormItem>
-  )}
-/>
-```
-
 ### Select
 
 ```tsx
@@ -336,6 +268,24 @@ const form = useForm<UpdateProductPayload>({
           <SelectItem value="b">Option B</SelectItem>
         </SelectContent>
       </Select>
+      <FormMessage />
+    </FormItem>
+  )}
+/>
+```
+
+### Textarea
+
+```tsx
+<FormField
+  control={form.control}
+  name="description"
+  render={({ field }) => (
+    <FormItem>
+      <FormLabel>Description</FormLabel>
+      <FormControl>
+        <Textarea rows={4} {...field} />
+      </FormControl>
       <FormMessage />
     </FormItem>
   )}
@@ -373,7 +323,6 @@ const mutation = useMutation({
     /* ... */
   },
   onError: (error) => {
-    // map a server field error back to the RHF field
     if (error.field === 'name') {
       form.setError('name', { message: error.message });
     }
@@ -430,7 +379,7 @@ function CreateProductForm() {
   const form = useForm();
   const mutation = useMutation({ mutationFn: createProduct });
 }
-// ✅ extract to useCreateProduct() hook — component only receives { form, onSubmit, isPending }
+// ✅ extract to useCreateProduct() — component only receives { form, onSubmit, isPending }
 
 // ❌ manual error display
 {errors.name && <p className="text-red-500">{errors.name.message}</p>}
