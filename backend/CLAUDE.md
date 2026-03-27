@@ -22,17 +22,23 @@
 
 ## Documentation Index
 
-| File                                             | Topic                                                |
-| ------------------------------------------------ | ---------------------------------------------------- |
-| [CLAUDE.md](./CLAUDE.md)                         | Overview, project structure, conventions (this file) |
-| [docs/database.md](./docs/database.md)           | Prisma setup, pgvector, migrations, adding models    |
-| [docs/auth.md](./docs/auth.md)                   | Auth0, JwtAuthGuard, @Public(), @CurrentUser()       |
-| [docs/bullmq.md](./docs/bullmq.md)               | BullMQ queues — producers, consumers, registration   |
-| [docs/rabbitmq.md](./docs/rabbitmq.md)           | RabbitMQ — exchanges, publishing, listeners          |
-| [docs/microservices.md](./docs/microservices.md) | Microservice rules, inter-service communication      |
-| [docs/validation.md](./docs/validation.md)       | DTOs, class-validator, ValidationPipe                |
-| [docs/config.md](./docs/config.md)               | Typed config factories, environment variables        |
-| [docs/conventions.md](./docs/conventions.md)     | Controllers, services, anti-patterns                 |
+| File                                               | Topic                                                |
+| -------------------------------------------------- | ---------------------------------------------------- |
+| [CLAUDE.md](./CLAUDE.md)                           | Overview, project structure, conventions (this file) |
+| [docs/app-module.md](./docs/app-module.md)         | AppModule — root application module                  |
+| [docs/auth.md](./docs/auth.md)                     | Auth — JWT guards, @Public(), @CurrentUser()         |
+| [docs/command.md](./docs/command.md)               | CQRS write side — commands and handlers              |
+| [docs/config.md](./docs/config.md)                 | Typed config factories, environment variables        |
+| [docs/controller.md](./docs/controller.md)         | HTTP layer — controllers                             |
+| [docs/conventions.md](./docs/conventions.md)       | CQRS patterns, anti-patterns                         |
+| [docs/dto-interfaces.md](./docs/dto-interfaces.md) | DTOs, input validation, domain contracts             |
+| [docs/module-guide.md](./docs/module-guide.md)     | How to create a feature module                       |
+| [docs/prisma-schema.md](./docs/prisma-schema.md)   | Prisma schema — database models                      |
+| [docs/query.md](./docs/query.md)                   | CQRS read side — queries and handlers                |
+| [docs/rabbitmq.md](./docs/rabbitmq.md)             | RabbitMQ — cross-service messaging                   |
+| [docs/repository.md](./docs/repository.md)         | Repository — data access layer                       |
+| [docs/shared.md](./docs/shared.md)                 | Shared library (@app/shared) — common primitives     |
+| [docs/validation.md](./docs/validation.md)         | Validation — DTOs + class-validator                  |
 
 ---
 

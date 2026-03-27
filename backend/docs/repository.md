@@ -22,19 +22,6 @@ It represents **what data this repository works with**
 
 ---
 
-## Examples
-
-```text
-Todo  → TodosRepository
-User  → UsersRepository
-Order → OrdersRepository
-```
-
-✔ Always plural
-✔ One repository per entity
-
----
-
 # Generic Repository Example
 
 ```ts

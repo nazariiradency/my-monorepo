@@ -15,26 +15,6 @@ It is the **single entry point for write operations** inside a feature module.
 [Action][Entity]Handler
 ```
 
-## What is `[Action]`?
-
-Use a verb that describes the mutation:
-
-```text
-Create / Update / Delete / Publish / Archive / Approve
-```
-
-## Examples
-
-```text
-CreateTodo   → CreateTodoCommand   + CreateTodoHandler
-UpdateTodo   → UpdateTodoCommand   + UpdateTodoHandler
-DeleteTodo   → DeleteTodoCommand   + DeleteTodoHandler
-```
-
-✔ Always `[Action][Entity]` — verb first, then entity  
-✔ Command and Handler live in the same file  
-✔ One command per operation
-
 ---
 
 # Generic Command Example

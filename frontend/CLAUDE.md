@@ -21,16 +21,19 @@ This React project follows a module-based architecture. Each feature module is s
 
 ## Documentation Index
 
-| File                                         | What it covers                                                          | Read when you need to…                               |
-| -------------------------------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------- |
-| [docs/modules.md](./docs/modules.md)         | Module architecture — schema, api, hooks, store, components, barrel     | Create a new feature module end-to-end               |
-| [docs/routing.md](./docs/routing.md)         | TanStack Router — pages, layouts, route groups, loaders, navigation     | Add a new page, route, or layout                     |
-| [docs/state.md](./docs/state.md)             | Zustand — global store, module store, slices, selectors                 | Manage dialog state, auth session, or sidebar        |
-| [docs/forms.md](./docs/forms.md)             | React Hook Form + Zod — schemas, resolvers, shadcn Form usage           | Build a form with validation and mutation            |
-| [docs/query.md](./docs/query.md)             | TanStack Query — queryKeys, queryOptions, hooks, cache invalidation     | Fetch data, write mutations, or prefetch in loaders  |
-| [docs/styling.md](./docs/styling.md)         | SCSS, Tailwind, shadcn/ui — design tokens, animations, mixins           | Style a component, add a token, or install shadcn    |
-| [docs/primitives.md](./docs/primitives.md)   | Custom shared components — Badge, Card, EmptyState, Spinner, PageHeader | Build a reusable UI element for `shared/components/` |
-| [docs/conventions.md](./docs/conventions.md) | Naming conventions, file placement, anti-patterns                       | Check the correct name or where a file belongs       |
+| File                                                       | What it covers                                                   | Read when you need to…                              |
+| ---------------------------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------- |
+| [docs/feature-module.md](./docs/feature-module.md)         | Feature module — step-by-step guide, folder structure, barrel    | Create a new feature module end-to-end              |
+| [docs/feature-schema.md](./docs/feature-schema.md)         | Zod schemas — validation, inferred types, single source of truth | Define or update data shapes for a module           |
+| [docs/feature-api.md](./docs/feature-api.md)               | Module HTTP layer — fetchers, queryKeys, queryOptions            | Add API calls, query keys, or query options         |
+| [docs/feature-components.md](./docs/feature-components.md) | Module-scoped UI components — hooks, store, rendering            | Build or modify a feature component                 |
+| [docs/page.md](./docs/page.md)                             | Page components — composing feature components into a screen     | Add or change a route-level page                    |
+| [docs/routes.md](./docs/routes.md)                         | TanStack Router — file-based routing, URL structure, navigation  | Add a new route or wire a page to a URL             |
+| [docs/layouts.md](./docs/layouts.md)                       | Layout shell components — sidebar, header, Outlet                | Add or modify a layout wrapper                      |
+| [docs/query.md](./docs/query.md)                           | TanStack Query — server state, caching, hooks, invalidation      | Fetch data, write mutations, or prefetch in loaders |
+| [docs/state.md](./docs/state.md)                           | Zustand — UI state only, slices, selectors                       | Manage dialog state, auth session, or sidebar       |
+| [docs/styling.md](./docs/styling.md)                       | SCSS, Tailwind, shadcn/ui — design tokens, animations, mixins    | Style a component, add a token, or install shadcn   |
+| [docs/shared.md](./docs/shared.md)                         | Shared library — UI primitives, axios, global store, utilities   | Use or add a cross-module utility or component      |
 
 ---
 

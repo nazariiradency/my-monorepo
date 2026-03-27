@@ -154,23 +154,6 @@ model User {
 
 ---
 
-# Workflow
-
-```text
-1. Edit schema.prisma
-      ↓
-2. npx prisma migrate dev --name [description]
-      ↓
-3. npx prisma generate
-      ↓
-4. PrismaClient is updated and ready
-```
-
-✔ Never edit `generated/` manually  
-✔ Always run `migrate dev` in development, `migrate deploy` in production
-
----
-
 # Prisma Client in NestJS
 
 Generated client is wrapped in `PrismaService`:

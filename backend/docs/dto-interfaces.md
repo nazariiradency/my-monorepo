@@ -18,14 +18,6 @@ Interface describes **domain entity shape**.
 
 # DTO
 
-## What is a DTO?
-
-DTO (Data Transfer Object) = validated input from the outside world.
-
-It sits at the **boundary** between HTTP and application logic.
-
----
-
 ## Naming Convention
 
 ```text
@@ -119,18 +111,6 @@ It is the contract between Repository, Handlers, and Controllers.
 [Entity]         → the entity itself
 [Entity]WithX    → entity with a relation included
 ```
-
-## Examples
-
-```text
-Todo
-User
-Order
-TodoWithUser
-```
-
-✔ No suffix, no prefix — just the entity name  
-✔ Matches Prisma model shape
 
 ---
 

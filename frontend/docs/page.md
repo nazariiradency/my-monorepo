@@ -16,17 +16,6 @@ It is responsible for **composing feature components and dialogs** into a comple
 [Entity]CreatePage   ← dedicated create screen (if not a dialog)
 ```
 
-## Examples
-
-```text
-TodoListPage
-UserDetailPage
-OrderListPage
-```
-
-✔ Always suffixed with `Page`  
-✔ Prefix = entity + screen type
-
 ---
 
 # File Structure

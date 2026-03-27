@@ -23,18 +23,6 @@ Optional suffix that narrows the read:
 ById / ByEmail / BySlug / WithRelations
 ```
 
-## Examples
-
-```text
-GetAllTodos        → GetAllTodosQuery        + GetAllTodosHandler
-GetTodoById        → GetTodoByIdQuery        + GetTodoByIdHandler
-GetUserByEmail     → GetUserByEmailQuery     + GetUserByEmailHandler
-```
-
-✔ Always starts with `Get`  
-✔ Query and Handler live in the same file  
-✔ One query per read operation
-
 ---
 
 # Generic List Query (Paginated)
@@ -165,15 +153,3 @@ async findOne(@Param('id') id: string) {
 | list (paginated) | `Promise<PaginatedResult<Entity>>` |
 | single by id     | `Promise<Entity>` (or throw)       |
 | single optional  | `Promise<Entity \| null>`          |
-
----
-
-# Query vs Command
-
-|                 | Query             | Command            |
-| --------------- | ----------------- | ------------------ |
-| Intent          | read              | write              |
-| Mutates state   | ❌                | ✅                 |
-| Returns data    | ✅                | optional           |
-| Throws NotFound | ✅ (single fetch) | ✅ (before mutate) |
-| Bus             | `QueryBus`        | `CommandBus`       |

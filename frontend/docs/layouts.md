@@ -1,57 +1,11 @@
 # Layout — Shell Wrapper Components (React + TanStack Router)
 
-Layout is a **persistent UI shell** rendered around a group of routes.
-
-It is responsible for **structural chrome** — sidebar, header, navigation — that stays constant while page content changes.
-
----
-
-# Core Idea
-
-Layout = persistent shell + `<Outlet />`
+Persistent UI shell rendered around a group of routes.
 
 ```text
 Layout (sidebar, header)
   └── <Outlet />   ← page renders here
 ```
-
----
-
-# Responsibilities
-
-Layout MUST:
-
-- render structural chrome (sidebar, header, nav, footer)
-- render `<Outlet />` where child routes appear
-- read global UI state from shared store (sidebar open/close)
-
-Layout MUST NOT:
-
-- fetch data
-- contain page-specific logic
-- render feature components directly (only via `<Outlet />`)
-- manage feature state
-
----
-
-# Naming Convention
-
-## Pattern
-
-```text
-[Name]Layout
-```
-
-## Examples
-
-```text
-ProtectedLayout   ← authenticated app shell (sidebar + header)
-AuthLayout        ← unauthenticated shell (centered card)
-OnboardingLayout  ← step-by-step wrapper
-```
-
-✔ Always suffixed with `Layout`  
-✔ Name describes the context, not the feature
 
 ---
 
@@ -66,25 +20,25 @@ src/
       index.ts
     AuthLayout/
       AuthLayout.tsx
-      AuthLayout.module.scss
       index.ts
 ```
 
-Each layout lives in its own folder with an `index.ts` barrel.
-
 ---
 
-# index.ts
+# Naming
 
-```ts
-export { [Name]Layout } from './[Name]Layout';
+```text
+[Name]Layout
+
+ProtectedLayout   ← authenticated shell (sidebar + header)
+AuthLayout        ← unauthenticated shell (centered card)
 ```
+
+✔ Always suffixed with `Layout`
 
 ---
 
 # How Layouts Connect to Routes
-
-Layouts are assigned to pathless layout routes in TanStack Router:
 
 ```tsx
 // routes/_protected.tsx
@@ -93,89 +47,8 @@ export const Route = createFileRoute('/_protected')({
 });
 ```
 
-The underscore prefix (`_protected`) means the layout wraps routes without adding a URL segment.
-
----
-
-# `ProtectedLayout` — Authenticated App Shell
-
-Wraps all authenticated routes. Provides sidebar + topbar + main content area.
-
-## Structure
-
-```text
-ProtectedLayout
-  ├── Mobile overlay      ← closes sidebar on mobile tap
-  ├── <aside>             ← sidebar with nav links
-  │     ├── Logo / brand
-  │     └── <nav>         ← feature nav links
-  ├── <header>            ← topbar with menu toggle
-  └── <main>
-        └── <Outlet />    ← page renders here
-```
-
-## Sidebar State
-
-Sidebar open/close is driven by global store — not local state:
-
-```ts
-const sidebarOpen = useAppStore((s) => s.sidebarOpen);
-const toggleSidebar = useAppStore((s) => s.toggleSidebar);
-```
-
-✔ Store-driven state persists across route navigations  
-✔ Mobile: sidebar slides in as overlay, closed on nav link click  
-✔ Desktop: sidebar is static, always visible
-
-## Adding a Nav Link
-
-```tsx
-<Link
-  to="/[entity]"
-  className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium
-            text-zinc-700 hover:bg-zinc-100 transition-colors"
-  onClick={() => {
-    if (window.innerWidth < 768) toggleSidebar();
-  }}
->
-  <[Icon] className="h-4 w-4" />
-  [Label]
-</Link>
-```
-
-✔ Always close sidebar on mobile after navigation  
-✔ Use `<Link>` from `@tanstack/react-router` — never `<a>`
-
----
-
-# `AuthLayout` — Unauthenticated Shell
-
-Centers content for login, register, and forgot-password pages.
-
-## Structure
-
-```text
-AuthLayout
-  └── centered container (max-w-md)
-        └── <Outlet />   ← auth page renders here
-```
-
-## Pattern
-
-```tsx
-export function AuthLayout() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-50">
-      <div className="w-full max-w-md">
-        <Outlet />
-      </div>
-    </div>
-  );
-}
-```
-
-✔ No state, no store — purely structural  
-✔ `max-w-md` keeps auth forms narrow and centered
+Underscore prefix keeps `_protected` out of the URL.  
+Routes become `/todo`, not `/_protected/todo`.
 
 ---
 
@@ -183,13 +56,27 @@ export function AuthLayout() {
 
 ```tsx
 export function [Name]Layout() {
+  // read global UI state if needed
+  const sidebarOpen  = useAppStore((s) => s.sidebarOpen);
+  const toggleSidebar = useAppStore((s) => s.toggleSidebar);
+
   return (
-    <div className="[root layout classes]">
+    <div className="flex h-screen">
 
-      {/* Optional: sidebar, header, nav */}
+      {/* optional: sidebar, header, nav */}
+      <aside>
+        <nav>
+          <Link
+            to="/[entity]"
+            onClick={() => { if (window.innerWidth < 768) toggleSidebar(); }}
+          >
+            [Label]
+          </Link>
+        </nav>
+      </aside>
 
-      <main className="[content area classes]">
-        <Outlet />  {/* ← always present */}
+      <main className="flex-1 overflow-y-auto p-6">
+        <Outlet />  {/* ← always required */}
       </main>
 
     </div>
@@ -197,14 +84,15 @@ export function [Name]Layout() {
 }
 ```
 
+✔ `<Outlet />` is mandatory — child routes render here  
+✔ Use `<Link>` from `@tanstack/react-router` — never `<a>`  
+✔ Sidebar state lives in global store — never in `useState`  
+✔ Close sidebar on mobile after navigation
+
 ---
 
-# Layout Comparison
+# Key Rules
 
-|             | `ProtectedLayout`    | `AuthLayout`           |
-| ----------- | -------------------- | ---------------------- |
-| For         | authenticated routes | unauthenticated routes |
-| Has sidebar | ✅                   | ❌                     |
-| Has header  | ✅                   | ❌                     |
-| Uses store  | ✅ (`sidebarOpen`)   | ❌                     |
-| Complexity  | medium               | minimal                |
+✔ Never fetch data in a layout  
+✔ Never render feature components directly — only via `<Outlet />`  
+✔ One layout per context — add a new one only when routes need a structurally different shell

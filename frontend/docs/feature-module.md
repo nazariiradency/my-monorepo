@@ -1,113 +1,187 @@
-# Feature Module — Frontend Domain Unit (React)
+# Feature Module — Step-by-Step Guide
 
-A feature module is a **self-contained unit** for one domain entity.
-
-It owns everything needed to display, mutate, and manage that entity — components, hooks, store, API, and schema.
+Every feature lives in `src/modules/[name]/`. Self-contained — nothing leaks out except through `index.ts`.
 
 ---
 
-# What a Module Contains
+## Folder Structure
 
-| Folder / File | Responsibility                           | Doc                                              |
-| ------------- | ---------------------------------------- | ------------------------------------------------ |
-| `components/` | UI building blocks for this entity       | [feature-components.md](./feature-components.md) |
-| `hooks/`      | data fetching and mutation hooks         | —                                                |
-| `store/`      | feature-scoped Zustand state             | —                                                |
-| `api.ts`      | HTTP functions, query keys, queryOptions | [feature-api.md](./feature-api.md)               |
-| `schema.ts`   | Zod schemas and derived TypeScript types | [feature-schema.md](./feature-schema.md)         |
-| `index.ts`    | public barrel export                     | —                                                |
-
----
-
-# File Structure
-
-```text
-modules/
-  [entity]/
-    components/
-      [Entity]Table/
-      [Entity]Form/
-      [Entity]Dialogs/
-      [Entity]Pagination/
-    hooks/
-      use[Entities].ts         ← list query hook
-      use[Entity].ts           ← detail query hook
-      useCreate[Entity].ts     ← create mutation hook
-      useUpdate[Entity].ts     ← update mutation hook
-      useDelete[Entity].ts     ← delete mutation hook
-      index.ts
-    store/
-      [entity].store.ts        ← dialog mode, selected entity, pagination state
-      index.ts
-    api.ts                     ← HTTP functions + query keys + queryOptions
-    schema.ts                  ← Zod schemas + TypeScript types
-    index.ts                   ← public exports
+```
+modules/[name]/
+├── components/
+│   ├── [Name]Form/
+│   ├── [Name]Table/
+│   └── [Name]Dialogs/
+│       ├── Create[Name]Dialog.tsx
+│       ├── Edit[Name]Dialog.tsx
+│       ├── Delete[Name]Dialog.tsx
+│       └── index.ts
+├── hooks/
+│   ├── use[Names].ts
+│   ├── useCreate[Name].ts
+│   ├── useUpdate[Name].ts
+│   ├── useDelete[Name].ts
+│   └── index.ts
+├── store/
+│   ├── [name].store.ts
+│   └── index.ts
+├── schema.ts
+├── api.ts
+└── index.ts
 ```
 
 ---
 
-# Data Flow
+## Step 1 — schema.ts
 
-```text
-Route loader
-  └── queryClient.ensureQueryData([entities]ListOptions())   ← api.ts
-        ↓ (cache warm)
-Page
-  └── [Entity]Table
-        └── useQuery([entities]ListOptions(page))            ← hooks/
-              └── fetch[Entities]()                         ← api.ts
-                    └── api.get('/[entities]')              ← @/shared/lib
-```
-
----
-
-# Mutation Flow
-
-```text
-User clicks "Create"
-  ↓
-[Entity]Table → openCreate()    ← store/
-  ↓
-Page renders <Create[Entity]Dialog />
-  ↓
-useCreate[Entity]()             ← hooks/
-  ├── useForm({ resolver: zodResolver(create[Entity]Schema) })  ← schema.ts
-  └── useMutation → create[Entity]()                           ← api.ts
-        ↓ on success
-  invalidateQueries([entity]Keys.lists())                      ← api.ts
-```
-
----
-
-# index.ts — Public API
-
-The module exposes only what the page needs:
+→ [feature-schema.md](./feature-schema.md)
 
 ```ts
-// components
-export { [Entity]Table } from './components/[Entity]Table';
-export { [Entity]Dialogs } from './components/[Entity]Dialogs';
+export const productSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  price: z.number(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
 
-// store
-export { use[Entity]Store } from './store';
+export const createProductSchema = z.object({
+  name: z.string().min(2),
+  price: z.number().positive(),
+});
 
-// query options (for route loader)
-export { [entities]ListOptions } from './api';
+export const updateProductSchema = createProductSchema.partial();
+
+export type Product = z.infer<typeof productSchema>;
+export type CreateProductPayload = z.infer<typeof createProductSchema>;
+export type UpdateProductPayload = z.infer<typeof updateProductSchema>;
 ```
-
-✔ Never export `api.ts` functions or `schema.ts` types directly from `index.ts`  
-✔ Only export what the page and route loader actually need  
-✔ Internal hooks, store slices, and schema stay private to the module
 
 ---
 
-# Adding a New Module
+## Step 2 — api.ts
 
-1. Create `schema.ts` — define Zod schemas and derive types → [feature-schema.md](./feature-schema.md)
-2. Create `api.ts` — define HTTP functions, query keys, queryOptions → [feature-api.md](./feature-api.md)
-3. Create `hooks/` — data fetching and mutation hooks
-4. Create `store/` — dialog mode, selected entity, pagination state
-5. Create `components/` — table, form, dialogs, pagination → [feature-components.md](./feature-components.md)
-6. Create `index.ts` — export only what the page needs
-7. Create the page → [page.md](./page.md)
-8. Create the route → [routes.md](./routes.md)
+→ [feature-api.md](./feature-api.md)
+
+```ts
+export const productKeys = {
+  all: () => ['products'] as const,
+  lists: () => ['products', 'list'] as const,
+  list: (page: number, limit: number) =>
+    ['products', 'list', { page, limit }] as const,
+  detail: (id: string) => ['products', 'detail', id] as const,
+};
+
+export const fetchProducts = (page = 1, limit = 10) =>
+  api.get('/products', { params: { page, limit } }).then((r) => r.data);
+
+export const createProduct = (body: CreateProductPayload): Promise<Product> =>
+  api.post('/products', body).then((r) => r.data);
+
+export const updateProduct = ({
+  id,
+  ...body
+}: { id: string } & UpdateProductPayload): Promise<Product> =>
+  api.patch(`/products/${id}`, body).then((r) => r.data);
+
+export const deleteProduct = (id: string): Promise<void> =>
+  api.delete(`/products/${id}`).then(() => undefined);
+
+export const productsListOptions = (page = 1, limit = 10) =>
+  queryOptions({
+    queryKey: productKeys.list(page, limit),
+    queryFn: () => fetchProducts(page, limit),
+  });
+```
+
+---
+
+## Step 3 — store/
+
+UI state only — which dialog is open, selected item, pagination cursor. No server data here.
+
+```ts
+interface ProductStore {
+  dialogMode: 'create' | 'edit' | 'delete' | null;
+  selectedProduct: Product | null;
+  page: number;
+  openCreate: () => void;
+  openEdit: (product: Product) => void;
+  openDelete: (product: Product) => void;
+  closeDialog: () => void;
+  setPage: (page: number) => void;
+}
+```
+
+---
+
+## Step 4 — hooks/
+
+→ [state.md](./state.md)
+
+One hook per intent. Each hook owns exactly one concern.
+
+| File                  | Uses                      | Returns                         |
+| --------------------- | ------------------------- | ------------------------------- |
+| `useProducts.ts`      | `useQuery`                | `{ data, isLoading, isError }`  |
+| `useCreateProduct.ts` | `useMutation` + `useForm` | `{ form, onSubmit, isPending }` |
+| `useUpdateProduct.ts` | `useMutation` + `useForm` | `{ form, onSubmit, isPending }` |
+| `useDeleteProduct.ts` | `useMutation`             | `{ onConfirm, isPending }`      |
+
+---
+
+## Step 5 — components/
+
+→ [feature-components.md](./feature-components.md)
+
+Components call hooks and render. No direct `useQuery`/`useMutation`, no business logic.
+
+---
+
+## Step 6 — index.ts
+
+Public barrel — the only import point for other modules and pages.
+
+```ts
+export { ProductsTable } from './components/ProductsTable';
+export {
+  CreateProductDialog,
+  EditProductDialog,
+  DeleteProductDialog,
+} from './components/ProductDialogs';
+export { useProductsStore } from './store';
+export {
+  useProducts,
+  useCreateProduct,
+  useUpdateProduct,
+  useDeleteProduct,
+} from './hooks';
+export { productsListOptions } from './api';
+export type {
+  Product,
+  CreateProductPayload,
+  UpdateProductPayload,
+} from './schema';
+```
+
+```ts
+// ✅
+import { ProductsTable } from '@/modules/products';
+
+// ❌ never bypass the barrel
+import { ProductsTable } from '@/modules/products/components/ProductsTable';
+```
+
+---
+
+## Where Does Something Live?
+
+| Question                 | Answer                      |
+| ------------------------ | --------------------------- |
+| Shape of API data?       | `schema.ts`                 |
+| HTTP call / query key?   | `api.ts`                    |
+| Server state / cache?    | `hooks/` via TanStack Query |
+| Form state + validation? | `hooks/useCreate[Name].ts`  |
+| Which dialog is open?    | `store/` via Zustand        |
+| Domain UI component?     | `components/`               |
+| Used by 2+ modules?      | promote to `@/shared`       |

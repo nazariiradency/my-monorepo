@@ -6,22 +6,6 @@ TanStack Router uses **file-based routing** — the folder and file structure di
 
 ---
 
-# Core Idea
-
-File path = URL path
-
-```text
-routes/
-  __root.tsx              → (root layout, wraps everything)
-  index.tsx               → /
-  _protected.tsx          → layout for /protected/* routes
-  _protected/
-    todo/
-      index.tsx           → /_protected/todo/
-```
-
----
-
 # File Structure
 
 ```text
@@ -148,15 +132,6 @@ export const Route = createFileRoute('/_protected/[entity]/')({
 ✔ Always use `ensureQueryData` in loaders — prevents redundant network requests when data is still fresh  
 ✔ Loader options (`[entity]ListOptions`) come from the feature module, not defined inline  
 ✔ The `component` is always a `Page` from `@/pages`
-
----
-
-# `beforeLoad` vs `loader`
-
-| Hook         | When it runs       | Use for                |
-| ------------ | ------------------ | ---------------------- |
-| `beforeLoad` | before anything    | auth guards, redirects |
-| `loader`     | after `beforeLoad` | data prefetching       |
 
 ---
 
