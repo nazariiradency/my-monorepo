@@ -1,0 +1,12 @@
+@mixin page-container {
+  padding-left: var(--spacing-page-x);
+  padding-right: var(--spacing-page-x);
+  max-width: 80rem;
+  margin: 0 auto;
+}
+
+@mixin truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
